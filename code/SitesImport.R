@@ -5,6 +5,8 @@
 library(stringr)
 library("dataRetrieval") #to pull data from USGS site
 
+#annoying that dataRetriveal doesn't work
+
 ##Import USGS gage sites##
 #Import list of sites in the eastern highland
 EastHi <- read.csv("data/RefEastHi.csv",colClasses="character") #7 variables
