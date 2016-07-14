@@ -1,0 +1,84 @@
+Shenandoah YOY abundance in 1982-2010 as a function of seasonal weather conditions
+Table 1 for a manuscript summarizing characteristics across 115 sites
+==================================================================================
+
+## working directory & libraries
+```{r working directory & libraries, warning=FALSE, message=FALSE}
+setwd('G:/Conte/Broad spatial modelling/VA_yoy_count/data/Than site data/')
+getwd()
+library(reshape2)
+library(rjags)
+library(plyr)
+library(ggplot2)
+library(knitr)
+library(arm)
+library(boot)
+load.module("glm")
+```
+
+## Read in site covariate data
+```{r read in data, results='hide'}
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/Than site data/'
+fileName <- 'siteDf.csv'   
+covData <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+str(covData)
+
+fileName <- 'WSarea_forKanno.csv'   
+areaData <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+str(areaData)
+```
+
+## Merge
+```{r merge the above two df}
+covDf <- merge(covData, areaData[c("SiteID","WatershedArea_ha")])
+
+## convert watershed area from ha to km2
+covDf$areakm2 <- covDf$WatershedArea_ha*0.01
+```
+
+## summary
+```{r summary}
+summary(covDf[c("Slope_deg","Elev_m","Lat_n83","Lon_n83","MaxWidth_m","MaxDepth_m","areakm2")])
+median(covDf$Lat_n83); min(covDf$Lat_n83); max(covDf$Lat_n83)
+median(covDf$Lon_n83); min(covDf$Lon_n83); max(covDf$Lon_n83)
+```
+
+## Are elevation and watershed area correlated?
+```{r elevation & area}
+plot(covDf$areakm2, covDf$Elev_m)
+cor(covDf$areakm2, covDf$Elev_m)
+
+## graph for Shen paper #2
+cor.elev.area <- ggplot(covDf, aes(x=areakm2, y=Elev_m)) +
+  geom_point(shape=1,size=4) +
+  xlab(bquote('Catchment area (' ~ km^{2} ~')')) +
+  ylab("Elevation (m)") +
+  labs(title = "") +
+  theme_bw() +
+  theme(legend.position="none",
+        panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.2), angle=90),
+        axis.title.x = element_text(size = rel(1.2)),
+        axis.text.x = element_text(size = rel(1.5), hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+  
+dpiIn <- 300
+ggsave( file=paste(getwd(),'/corr elev & area.png',sep=''), plot=cor.elev.area, dpi=dpiIn , 
+        width=3.5, height=3, units='in',scale=2 )
+```
+
+## standardize area
+```{r area std}
+area.std <- (covDf$areakm2 - mean(covDf$areakm2)) / sd(covDf$areakm2)
+```
+
+## Keep only "area.std"
+```{r keep, eval=FALSE}
+library(gdata)
+keep('area.std', sure=TRUE)
+```
+
+

@@ -1,0 +1,1117 @@
+Shenandoah YOY abundance in 1982-2010 as a function of seasonal weather conditions
+Analysis started on 10/14/2014
+==================================================================================
+
+## working directory & libraries
+```{r working directory & libraries, warning=FALSE, message=FALSE}
+setwd('G:/Conte/Broad spatial modelling/VA_yoy_count/analysis/model 3.5/')
+getwd()
+library(reshape2)
+library(rjags)
+library(plyr)
+library(ggplot2)
+library(knitr)
+library(arm)
+library(boot)
+load.module("glm")
+```
+
+## Read in data
+```{r fish, climate & site cov}
+## fish count data
+load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/fish data 115/countArray 115 sites.RData")
+
+## seasonal climate data
+load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/seasonal climate data 115/Site_by_year seasonal climate var standardized 115.RData")
+
+## site covariate data
+load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/site cov data 115/standardized site cov 115 sites.RData")
+
+## watershed area data
+load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/Than site data/watershed area standardized 115 sites.RData")
+
+## detection covariate data
+load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/covs for detection data 115/julian_prcpTot.RData")
+```
+
+## replace NA in julian dates and prcpTot with 0
+```{r replace NA}
+julian.std.ar[is.na(julian.std.ar)] <- 0
+prcpTot.std.ar[is.na(prcpTot.std.ar)] <- 0
+```
+
+
+## Setting up for the model
+```{r setting up JAGS model}
+# data structure
+nSites=115; nYears=29; nAges=2; nPasses=3
+nCovs=8
+
+# bundle data
+dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
+            y=countAr,  # three-pass of both adults & YOY
+            summer.temp=summerTempAryStd, fall.temp=fallTempAryStd,
+            winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
+            summer.prcp=summerPrcpAryStd, fall.prcp=fallPrcpAryStd,
+            winter.prcp=winterPrcpAryStd, spring.prcp=springPrcpAryStd,
+            elev=elev.std, lat=lat.std,
+            julian=julian.std.ar, prcpTot=prcpTot.std.ar, area=area.std)
+
+## set initial values
+init <- function() list( mu=runif(nAges,0,5),
+                         eps=array(runif(nSites*nYears*nAges,-1,1), c(nSites,nYears,nAges)),
+                         b=array(rnorm(nCovs*nSites*nAges,0,2), c(nCovs,nSites,nAges)),
+                         sigmaN=runif(2,0,3), 
+                         sigma.b=array(runif(nCovs*nAges,0,3), c(nCovs,nAges)),
+                         g.0=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)), 
+                         g.1=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
+                         g.2=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
+                         g.3=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
+                         p.mean=rep(0.5,2), p.b=array(rnorm(3*nAges,0,0.5), c(3,nAges)), 
+                         N=array(500, dim=c(nSites, nYears, nAges)),
+                         b.day=runif(nAges,-2,2),
+                         b.site=array(rnorm(3*nAges,0,0.5), c(3,nAges)))
+                         
+```
+
+## Running JAGS
+```{r running JAGS}
+## sequential
+set.seed(234)
+StageBurnin <- jags.model(paste("shen yoy model 3.5.r", sep=""),
+                          dat, init, n.chains=3, n.adapt=100000)
+
+## concise summary
+Niter=50000
+Nthin=20
+pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
+          "p.mean","p.b","b.day","b.site") 
+out1 <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin)
+summary(out1)
+plot(out1)
+
+## Gelman
+library(coda)
+gelman.diag(out1)
+
+## detailed summary and for graphing
+pars2 <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
+           "p.mean","p.b","b.day","b.site","b","N","p") 
+out2 <- jags.samples(StageBurnin, pars2, n.iter=Niter, thin=Nthin)
+```
+
+
+
+# check model fit
+```{r check model fit, warning=FALSE}
+N.est <- p.est <- array(NA, dim=c(nSites,nYears,nAges))
+for(i in 1:nSites){
+  for(t in 1:nYears){
+    for(j in 1:nAges){
+      N.est[i,t,j] <- median(out2$N[i,t,j,1:(Niter/Nthin),1:3])
+      p.est[i,t,j] <- median(out2$p[i,t,j,1:(Niter/Nthin),1:3])
+    }
+  }
+}
+
+y.est <- array(NA, dim=c(nSites,nYears,nAges,nPasses))
+y.est[,,,1] <- N.est*p.est
+y.est[,,,2] <- N.est*(1-p.est)*p.est
+y.est[,,,3] <- N.est*(1-p.est)*(1-p.est)*p.est
+
+
+## YOY, 1st pass
+yoy1.obs <- adply(dat$y[,,1,1], c(1,2), mean)
+yoy1.est <- adply(y.est[,,1,1], c(1,2), mean)
+
+yoy1.fit <- cbind(yoy1.obs, yoy1.est$V1)
+names(yoy1.fit) <- c("siteID", "yearID", "yoy1.obs", "yoy1.est")
+
+ggplot(yoy1.fit[complete.cases(yoy1.fit),], 
+       aes(x=yoy1.obs, y=yoy1.est)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap( ~ yearID, scales="free", ncol=5) +
+  xlab("Observed YOY count in 1st pass") +
+  ylab("Predicted YOY count in 1st pass") +
+  labs(title = "Model fit: YOY 1st pass") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+## YOY, 2nd pass
+yoy2.obs <- adply(dat$y[,,1,2], c(1,2), mean)
+yoy2.est <- adply(y.est[,,1,2], c(1,2), mean)
+
+yoy2.fit <- cbind(yoy2.obs, yoy2.est$V1)
+names(yoy2.fit) <- c("siteID", "yearID", "yoy2.obs", "yoy2.est")
+
+ggplot(yoy2.fit[complete.cases(yoy2.fit),],
+       aes(x=yoy2.obs, y=yoy2.est)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap( ~ yearID, scales="free", ncol=5) +
+  xlab("Observed YOY count in 2nd pass") +
+  ylab("Predicted YOY count in 2nd pass") +
+  labs(title = "Model fit: YOY 2nd pass") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+## YOY, 3rd pass
+yoy3.obs <- adply(dat$y[,,1,3], c(1,2), mean)
+yoy3.est <- adply(y.est[,,1,3], c(1,2), mean)
+
+yoy3.fit <- cbind(yoy3.obs, yoy3.est$V1)
+names(yoy3.fit) <- c("siteID", "yearID", "yoy3.obs", "yoy3.est")
+
+ggplot(yoy3.fit[complete.cases(yoy3.fit),], 
+       aes(x=yoy3.obs, y=yoy3.est)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap( ~ yearID, scales="free", ncol=5) +
+  xlab("Observed YOY count in 3rd pass") +
+  ylab("Predicted YOY count in 3rd pass") +
+  labs(title = "Model fit: YOY 3rd pass") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+## Adult, 1st pass
+adult1.obs <- adply(dat$y[,,2,1], c(1,2), mean)
+adult1.est <- adply(y.est[,,2,1], c(1,2), mean)
+
+adult1.fit <- cbind(adult1.obs, adult1.est$V1)
+names(adult1.fit) <- c("siteID", "yearID", "adult1.obs", "adult1.est")
+
+ggplot(adult1.fit[complete.cases(adult1.fit),], 
+       aes(x=adult1.obs, y=adult1.est)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap( ~ yearID, scales="free", ncol=5) +
+  xlab("Observed adult count in 1st pass") +
+  ylab("Predicted adult count in 1st pass") +
+  labs(title = "Model fit: Adult 1st pass") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+## Adult, 2nd pass
+adult2.obs <- adply(dat$y[,,2,2], c(1,2), mean)
+adult2.est <- adply(y.est[,,2,2], c(1,2), mean)
+
+adult2.fit <- cbind(adult2.obs, adult2.est$V1)
+names(adult2.fit) <- c("siteID", "yearID", "adult2.obs", "adult2.est")
+
+ggplot(adult2.fit[complete.cases(adult2.fit),], 
+       aes(x=adult2.obs, y=adult2.est)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap( ~ yearID, scales="free", ncol=5) +
+  xlab("Observed adult count in 2nd pass") +
+  ylab("Predicted adult count in 2nd pass") +
+  labs(title = "Model fit: Adult 2nd pass") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+## Adult, 3rd pass
+adult3.obs <- adply(dat$y[,,2,3], c(1,2), mean)
+adult3.est <- adply(y.est[,,2,3], c(1,2), mean)
+
+adult3.fit <- cbind(adult3.obs, adult3.est$V1)
+names(adult3.fit) <- c("siteID", "yearID", "adult3.obs", "adult3.est")
+
+ggplot(adult3.fit[complete.cases(adult3.fit),], 
+       aes(x=adult3.obs, y=adult3.est)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap( ~ yearID, scales="free", ncol=5) +
+  xlab("Observed adult count in 3rd pass") +
+  ylab("Predicted adult count in 3rd pass") +
+  labs(title = "Model fit: Adult 3rd pass") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+
+## Check model fit across all passes based on Than's issue 03/16/2015
+  ########
+  ## YOY## 
+  ########
+
+yoyAll.fit <- merge(yoy1.fit, yoy2.fit)
+yoyAll.fit <- merge(yoyAll.fit, yoy3.fit)
+
+## total observed count across three passes
+yoyAll.fit$yoyTotObs <- apply(yoyAll.fit[c("yoy1.obs","yoy2.obs","yoy3.obs")], 
+                              1, sum, na.rm=TRUE)
+
+## total expected count across three passes: by taking into account NA
+yoyAll.fit$yoy1.est.na.inc <- ifelse(is.na(yoyAll.fit$yoy1.obs), 
+                                     0, yoyAll.fit$yoy1.est) 
+yoyAll.fit$yoy2.est.na.inc <- ifelse(is.na(yoyAll.fit$yoy2.obs), 
+                                     0, yoyAll.fit$yoy2.est) 
+yoyAll.fit$yoy3.est.na.inc <- ifelse(is.na(yoyAll.fit$yoy3.obs), 
+                                     0, yoyAll.fit$yoy3.est) 
+yoyAll.fit$yoyTotEst <- yoyAll.fit$yoy1.est.na.inc + yoyAll.fit$yoy2.est.na.inc + yoyAll.fit$yoy3.est.na.inc
+
+## Graph
+ggplot(yoyAll.fit[complete.cases(yoyAll.fit),], 
+       aes(x=yoyTotObs, y=yoyTotEst)) + geom_point(shape=1, size=5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  xlab("Observed abundance across 3 passes") +
+  ylab("Estimated abundance across 3 passes") +
+  labs(title = "YOY abundance across passes: 3-pass sites only") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+
+  ###########
+  ## Adult ## 
+  ###########
+adultAll.fit <- merge(adult1.fit, adult2.fit)
+adultAll.fit <- merge(adultAll.fit, adult3.fit)
+
+## total observed count across three passes
+adultAll.fit$adultTotObs <- apply(adultAll.fit[c("adult1.obs","adult2.obs","adult3.obs")], 
+                              1, sum, na.rm=TRUE)
+
+## total expected count across three passes: by taking into account NA
+adultAll.fit$adult1.est.na.inc <- ifelse(is.na(adultAll.fit$adult1.obs), 
+                                     0, adultAll.fit$adult1.est) 
+adultAll.fit$adult2.est.na.inc <- ifelse(is.na(adultAll.fit$adult2.obs), 
+                                     0, adultAll.fit$adult2.est) 
+adultAll.fit$adult3.est.na.inc <- ifelse(is.na(adultAll.fit$adult3.obs), 
+                                     0, adultAll.fit$adult3.est) 
+adultAll.fit$adultTotEst <- adultAll.fit$adult1.est.na.inc + adultAll.fit$adult2.est.na.inc + adultAll.fit$adult3.est.na.inc
+
+## Graph
+ggplot(adultAll.fit[complete.cases(adultAll.fit),], 
+       aes(x=adultTotObs, y=adultTotEst)) + geom_point(shape=1, size=5) +
+  geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  xlab("Observed abundance across 3 passes") +
+  ylab("Estimated abundance across 3 passes") +
+  labs(title = "Adult abundance across passes: 3-pass sites only") +
+  theme(axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1)),
+        plot.title = element_text(size = rel(1.5), colour="blue"),
+        legend.background = element_rect(colour = "black"),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank())
+```
+
+
+# Goodnes-of-fit: following Ben's advice during GCB revision
+```{r GOF}
+#all.obs <- adply(y[,,,], c(1,2,3,4), identity)
+#all.est <- adply(y.est[,,,], c(1,2,3,4), identity)
+
+#all.fit <- cbind(all.obs, all.est$V1)
+#names(all.fit) <- c("site","year","age","pass","obs","est")
+
+yoy1.fit$step <- ifelse(yoy1.fit$yoy1.est > yoy1.fit$yoy1.obs, 1,0)
+yoy1.fit.narm <- yoy1.fit[complete.cases(yoy1.fit),]
+yoy1.baysPval <- nrow(subset(yoy1.fit.narm, step==1)) / nrow(yoy1.fit.narm)
+yoy1.baysPval
+
+yoy2.fit$step <- ifelse(yoy2.fit$yoy2.est > yoy2.fit$yoy2.obs, 1,0)
+yoy2.fit.narm <- yoy2.fit[complete.cases(yoy2.fit),]
+yoy2.baysPval <- nrow(subset(yoy2.fit.narm, step==1)) / nrow(yoy2.fit.narm)
+yoy2.baysPval
+
+yoy3.fit$step <- ifelse(yoy3.fit$yoy3.est > yoy3.fit$yoy3.obs, 1,0)
+yoy3.fit.narm <- yoy3.fit[complete.cases(yoy3.fit),]
+yoy3.baysPval <- nrow(subset(yoy3.fit.narm, step==1)) / nrow(yoy3.fit.narm)
+yoy3.baysPval
+
+adult1.fit$step <- ifelse(adult1.fit$adult1.est > adult1.fit$adult1.obs, 1,0)
+adult1.fit.narm <- adult1.fit[complete.cases(adult1.fit),]
+adult1.baysPval <- nrow(subset(adult1.fit.narm, step==1)) / nrow(adult1.fit.narm)
+adult1.baysPval
+
+adult2.fit$step <- ifelse(adult2.fit$adult2.est > adult2.fit$adult2.obs, 1,0)
+adult2.fit.narm <- adult2.fit[complete.cases(adult2.fit),]
+adult2.baysPval <- nrow(subset(adult2.fit.narm, step==1)) / nrow(adult2.fit.narm)
+adult2.baysPval
+
+adult3.fit$step <- ifelse(adult3.fit$adult3.est > adult3.fit$adult3.obs, 1,0)
+adult3.fit.narm <- adult3.fit[complete.cases(adult3.fit),]
+adult3.baysPval <- nrow(subset(adult3.fit.narm, step==1)) / nrow(adult3.fit.narm)
+adult3.baysPval
+
+
+
+
+p1 <- ggplot(yoy1.fit, aes(x=yoy1.obs, y=yoy1.est, color=yearID, size=2)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "black", size = 1.1, linetype="dashed") +
+  ylim(0, 450) + 
+  xlim(0, 450) +
+  xlab("") +
+  ylab("") +
+  labs(title = "YOY 1st pass") +
+  annotate("text", label=round(yoy1.baysPval, digits=2), 
+           x=50, y=400, 
+           size=7, colour="black") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.3)),
+        plot.title = element_text(size = rel(1.5), colour="black"),
+        legend.position = "none")
+
+p2 <- ggplot(yoy2.fit, aes(x=yoy2.obs, y=yoy2.est, color=yearID, size=2)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "black", size = 1.1, linetype="dashed") +
+  ylim(0, 230) + 
+  xlim(0, 230) +
+  xlab("") +
+  ylab("") +
+  labs(title = "YOY 2nd pass") +
+  annotate("text", label=round(yoy2.baysPval, digits=2), 
+           x=30, y=200, 
+           size=7, colour="black") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.3)),
+        plot.title = element_text(size = rel(1.5), colour="black"),
+        legend.position = "none")
+
+p3 <- ggplot(yoy3.fit, aes(x=yoy3.obs, y=yoy3.est, color=yearID, size=2)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "black", size = 1.1, linetype="dashed") +
+  ylim(0, 90) + 
+  xlim(0, 90) +
+  xlab("") +
+  ylab("") +
+  labs(title = "YOY 3rd pass") +
+  annotate("text", label=round(yoy3.baysPval, digits=2), 
+           x=10, y=80, 
+           size=7, colour="black") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.3)),
+        plot.title = element_text(size = rel(1.5), colour="black"),
+        legend.position = "none")
+
+p4 <- ggplot(adult1.fit, aes(x=adult1.obs, y=adult1.est, color=yearID, size=2)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "black", size = 1.1, linetype="dashed") +
+  ylim(0, 200) + 
+  xlim(0, 200) +
+  xlab("") +
+  ylab("") +
+  labs(title = "Adult 1st pass") +
+  annotate("text", label=round(adult1.baysPval, digits=2), 
+           x=20, y=175, 
+           size=7, colour="black") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.3)),
+        plot.title = element_text(size = rel(1.5), colour="black"),
+        legend.position = "none")
+
+p5 <- ggplot(adult2.fit, aes(x=adult2.obs, y=adult2.est, color=yearID, size=2)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "black", size = 1.1, linetype="dashed") +
+  ylim(0, 60) + 
+  xlim(0, 60) +
+  xlab("") +
+  ylab("") +
+  labs(title = "Adult 2nd pass") +
+  annotate("text", label=round(adult2.baysPval, digits=2), 
+           x=7, y=53, 
+           size=7, colour="black") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.3)),
+        plot.title = element_text(size = rel(1.5), colour="black"),
+        legend.position = "none")
+
+p6 <- ggplot(adult3.fit, aes(x=adult3.obs, y=adult3.est, color=yearID, size=2)) + geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "black", size = 1.1, linetype="dashed") +
+  ylim(0, 35) + 
+  xlim(0, 35) +
+  xlab("") +
+  ylab("") +
+  labs(title = "Adult 3rd pass") +
+  annotate("text", label=round(adult3.baysPval, digits=2), 
+           x=4, y=32, 
+           size=7, colour="black") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.3)),
+        plot.title = element_text(size = rel(1.5), colour="black"),
+        legend.position = "none")
+
+require(gridExtra)
+grid.arrange(p1,p2,p3,p4,p5,p6, ncol=3, 
+             main=textGrob("Observed count",gp=gpar(cex=1.2),vjust=35),
+             left=textGrob("Predicted count",gp=gpar(cex=1.2),vjust=2,rot=90))
+```
+
+
+
+## Posterior correlation of effect size: YOY only
+```{r posterior correlation}
+# From MCMC array to data frame
+biplot <- adply(out2$g.0[,1,,], c(1,2,3))
+
+# From long to wide format
+biplot.wide <- dcast(biplot, X2 + X3 ~ X1, value.var="V1")
+names(biplot.wide) <- c("iter","chains","summerP","fallP","winterP",
+                        "springP","summerT","fallT","winterT","springT")
+
+## Pair plot
+# function for pearson correlation (http://www2.warwick.ac.uk/fac/sci/moac/people/students/peter_cock/r/iris_plots/)
+panel.pearson <- function(x, y, ...) {
+  horizontal <- (par("usr")[1] + par("usr")[2]) / 2; 
+  vertical <- (par("usr")[3] + par("usr")[4]) / 2; 
+  text(horizontal, vertical, format(cor(x,y), digits=2)) 
+}
+
+postCor <- pairs(biplot.wide[3:10], 
+      #main="Posterior correlation of seasonal cov. intercept", 
+      upper.panel=panel.pearson)
+```
+
+
+## Graphing effect size of seasonal covariates: YOY only
+```{r graphing effect size}
+## From mcarray to data frame
+effSizeDf <- adply(out2$g.0[,1,,], c(1,2,3))
+names(effSizeDf) <- c("param","iter","chain","value")
+
+## Mean & 95% CI
+effSizeMeanDf <- aggregate(effSizeDf$value, by=list(effSizeDf$param), FUN="mean")
+effSizeLowerDf <- aggregate(effSizeDf$value, by=list(effSizeDf$param), 
+                            FUN=function(x) quantile(x, probs=0.025))
+effSizeUpperDf <- aggregate(effSizeDf$value, by=list(effSizeDf$param), 
+                            FUN=function(x) quantile(x, probs=0.975))
+
+## Combine them into a single data frame
+effSizeSummDf <- cbind(effSizeMeanDf, effSizeLowerDf$x, effSizeUpperDf$x)
+effSizeSummDf$cov <- c('summer.prcp', 'fall.prcp', 'winter.prcp', 'spring.prcp',
+                       'summer.temp', 'fall.temp', 'winter.temp', 'spring.temp')
+names(effSizeSummDf) <- c("group","mean","lower","upper","cov.name")
+effSizeSummDf <- effSizeSummDf[c("group","cov.name","mean","lower","upper")]
+effSizeSummDf$cov.name <- factor(effSizeSummDf$cov.name, levels=effSizeSummDf$cov.name) # reorder
+
+## ggplot effect size
+effSize <- ggplot(effSizeSummDf, aes(x=cov.name, y=mean)) + 
+  geom_errorbar(width=0.5, size=1.5, aes(ymin=lower, ymax=upper)) +
+  geom_point(shape=21, size=7, fill="white") +
+  geom_hline(aes(yintercept=0), colour="black", size=1.5, linetype="dashed") +
+  xlab("") +
+  ylab("Effect size") +
+  ylim(-0.5,0.5) +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.8), angle=-60, hjust=0),
+        axis.text.y = element_text(size = rel(1.8)))
+effSize
+
+dpiIn <- 300
+ggsave( file=paste(getwd(),'/effect_size.png',sep=''), plot=effSize, dpi=dpiIn , width=8, height=5, units='in',scale=2 )
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/effect_size.pdf',sep=''), plot=effSize, dpi=dpiIn , width=8, height=5, units='in',scale=2 )
+```
+
+
+## Summer Prcp effect among 115 sites: yoy only
+```{r variable summer prcp effect}
+## Read in elevation, latitude and watershed area data
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/site cov data 115/'
+fileName <- 'siteDf.csv'   
+siteDf <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/Than site data/'
+fileName <- 'WSarea_forKanno.csv'
+areaDf <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+
+siteDf <- merge(siteDf, areaDf[,1:2])
+siteDf$area_km2 <- siteDf$WatershedArea_ha*0.01 # from ha to km2
+
+## Summer prcp intercept & slope by site
+smrPrcpEst <- as.data.frame(cbind(siteDf$SiteID,   # SiteID does not come out for some reason
+                                  rep(mean(out2$mu[1,,]), nrow(siteDf)),
+                                  apply(out2$b[1,,1,,], 1, mean),
+                                  siteDf$Lat_n83,
+                                  siteDf$Elev_m,
+                                  siteDf$area_km2))
+names(smrPrcpEst) <- c("site","int","slope","lat","elev","area")
+smrPrcpEst$std.lat <- (smrPrcpEst$lat - mean(smrPrcpEst$lat)) / sd(smrPrcpEst$lat)
+smrPrcpEst$std.elev <- (smrPrcpEst$elev - mean(smrPrcpEst$elev)) / sd(smrPrcpEst$elev)
+smrPrcpEst$std.area <- (smrPrcpEst$area - mean(smrPrcpEst$area)) / sd(smrPrcpEst$area)
+
+## Summer prcp regression lines by site
+### Read in raw summer prcp values
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/seasonal climate data 115/'
+fileName <- 'summerPrcpDf2.csv'   
+summerPrcpDf2 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+summerPrcpAry <- array(summerPrcpDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))   # array works better than data frame in the following function
+
+### Observed range of spring prcp values at each site
+smrPrcpRawSeq <- matrix(NA, nrow=nrow(summerPrcpAry), ncol=30)
+for(i in 1:nrow(smrPrcpRawSeq)){
+  smrPrcpRawSeq[i,] <- data.matrix( seq(min(summerPrcpAry[i,]), max(summerPrcpAry[i,]), length.out=30) )
+}
+                               
+### Standardized range of spring prcp values at each site
+smrPrcpStdSeq <- matrix(NA, nrow=nrow(summerPrcpAry), ncol=30)
+smrPrcpStdSeq <- data.matrix( (smrPrcpRawSeq - apply(summerPrcpAry,1,mean)) / apply(summerPrcpAry,1,sd) )
+# make sure that 'smrPrcpRawSeq' & 'summerPrcpAry' are used at right places
+
+### Merge standardized and raw values together
+smrPrcpRawSeq.df <- data.frame(smrPrcpRawSeq) 
+smrPrcpRawSeq.df <- as.data.frame(cbind(siteDf$SiteID, siteDf$Site, smrPrcpRawSeq.df))
+colnames(smrPrcpRawSeq.df)[1:2] <- c("SiteID","Site")
+smrPrcpRawSeq.long <- melt(smrPrcpRawSeq.df, id.vars=c("SiteID","Site"))
+colnames(smrPrcpRawSeq.long)[4] <- "raw.value"
+
+smrPrcpStdSeq.df <- data.frame(smrPrcpStdSeq)
+smrPrcpStdSeq.df <- as.data.frame(cbind(siteDf$SiteID, siteDf$Site, smrPrcpStdSeq.df))
+colnames(smrPrcpStdSeq.df)[1:2] <- c("SiteID","Site")
+smrPrcpStdSeq.long <- melt(smrPrcpStdSeq.df, id.vars=c("SiteID","Site"))
+colnames(smrPrcpStdSeq.long)[4] <- "std.value"
+
+smrPrcpSim <- merge(smrPrcpRawSeq.long, smrPrcpStdSeq.long)
+
+
+## Add predicted yoy abundance for each site
+smrPrcpSim <- merge(smrPrcpSim, smrPrcpEst, by.x="Site", by.y="site")
+colnames(smrPrcpSim)[4] <- "raw.value"
+
+### use regression coef to predict yoy abundance
+smrPrcpSim$predYoy <- exp( smrPrcpSim$int + 
+                           smrPrcpSim$slope * smrPrcpSim$std.value + 
+                           median(out2$b.site[1,1,,]) * smrPrcpSim$std.elev +
+                           median(out2$b.site[2,1,,]) * smrPrcpSim$std.lat + 
+                           median(out2$b.site[3,1,,]) * smrPrcpSim$std.area )
+
+## categorize elevation: low, mid & high
+#smrPrcpSim$latCat <- ifelse(smrPrcpSim$lat < 38.4, 'Low latitude',
+#                             ifelse(smrPrcpSim$lat < 38.6,
+#                                    'Mid latitude','High latitude'))
+#smrPrcpSim$latCat <- ordered(smrPrcpSim$latCat,
+#                                   levels=c("High latitude","Mid latitude","Low latitude"))
+
+smrPrcpSim$latCat <- ifelse(smrPrcpSim$lat < 38.5, 'Southern sites', 'Northern sites')
+
+
+## graph
+smrPrcpBySites <- ggplot(smrPrcpSim, aes(x=raw.value, y=predYoy, group=Site)) + 
+  geom_line() + 
+  facet_grid(. ~ latCat) +
+  xlab("Total precipitation in preceding summer (mm)") +
+  ylab("Estimated YOY abundance") +
+  #ylim(0,7.5) +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.5), angle=-60, hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+smrPrcpBySites
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/smrPrcp.png',sep=''), plot=smrPrcpBySites, dpi=dpiIn , width=8, height=3, units='in',scale=2 )
+```
+
+
+## Temporal trend in YOY abundance by site
+```{r temporal YOY abundance}
+## YOY estimates
+N.est.df <- data.frame(N.est[,,1])   # N.est calculated on line 94
+N.est.df <- as.data.frame(cbind(siteDf$SiteID, siteDf$Site, N.est.df))
+names(N.est.df) <- c("siteID","site","1982","1983","1984","1985","1986",
+                     "1987","1988","1989","1990","1991","1992","1993",
+                     "1994","1995","1996","1997","1998","1999","2000",
+                     "2001","2002","2003","2004","2005","2006","2007",
+                     "2008","2009","2010")
+
+N.est.long <- melt(N.est.df, id.vars=c("siteID","site"))
+names(N.est.long) <- c("siteID","site","year","pred")
+
+## When did sampling take place?
+sampled <- adply(dat$y[,,1,1], c(1,2), mean)  # when sampling took place
+sampled$X3 <- substr(sampled$X1, 3,9)
+sampled$V1[sampled$V1 > 0] <- 1
+names(sampled) <- c("siteID.old","year","sampled","siteID")
+
+## Merge the above two data frames
+N.est.long2 <- merge(N.est.long, sampled)
+
+## Read in sample history information to select a group of sites
+### Read in sample history file
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/fish data 115/'
+fileName <- 'sampleHist_115sites.csv'   
+sampleHist <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+
+### How many years was each site sampled?
+sampleHistBin <- sampleHist
+sampleHistBin[,2:30][sampleHist[,2:30] > 0] <- 1
+sampleHistBin$numSample <- apply(sampleHistBin[,2:30],1,sum,na.rm=T)
+# The line below is to calculate the number of survey between 1996-2010
+sampleHistBin$numSample2 <- apply(sampleHistBin[,16:30],1,sum,na.rm=T)
+sampleHistBin$siteID <- substr(sampleHistBin$SiteID, 3,9)
+
+### Merge this sample history to the bigger data frame
+N.est.long3 <- merge(N.est.long2, sampleHistBin[c("numSample","numSample2","siteID")])
+N.est.long3$year <- as.numeric(as.character(N.est.long3$year))
+
+####################################################################
+### This graph uses 1996-2010 data based on sites that were surveyed
+### at least 10 times
+####################################################################
+
+## How many sites were samples at least 10 times?
+table(sampleHistBin$numSample2)
+
+## identify sites used in the graph below
+yoyTrendSites <- subset(sampleHistBin[c("siteID","numSample","numSample2")], 
+                                      numSample2 > 9)
+#write.csv(yoyTrendSites, file="yoyTrendSites.csv", row.names=FALSE)
+
+yoyTrend <- ggplot(subset(N.est.long3[complete.cases(N.est.long3),], 
+              numSample2 > 9 & year > 1995),  # this line controls 
+       aes(x=year, y=pred, group=site)) + 
+  geom_line() + geom_point(shape=1,size=3)+
+  scale_x_continuous(breaks=1996:2010) +
+  xlab("Year") +
+  ylab("Predicted YOY abundance") +
+  labs(title = "") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.5), angle=-60, hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/YOY trend.png',sep=''), plot=yoyTrend, dpi=dpiIn , width=6, height=3, units='in',scale=2 )
+```
+
+
+## Temporal trend in ADULT abundance by site
+```{r temporal adilt abundance}
+## Adult estimates
+adultN.est.df <- data.frame(N.est[,,2])   # N.est calculated on line 94
+adultN.est.df <- as.data.frame(cbind(siteDf$SiteID, siteDf$Site, adultN.est.df))
+names(adultN.est.df) <- c("siteID","site","1982","1983","1984","1985","1986",
+                          "1987","1988","1989","1990","1991","1992","1993",
+                          "1994","1995","1996","1997","1998","1999","2000",
+                          "2001","2002","2003","2004","2005","2006","2007",
+                          "2008","2009","2010")
+
+adultN.est.long <- melt(adultN.est.df, id.vars=c("siteID","site"))
+names(adultN.est.long) <- c("siteID","site","year","pred")
+
+## When did sampling take place?
+sampled <- adply(dat$y[,,2,1], c(1,2), mean)  # when sampling took place
+sampled$X3 <- substr(sampled$X1, 3,9)
+sampled$V1[sampled$V1 > 0] <- 1
+names(sampled) <- c("siteID.old","year","sampled","siteID")
+
+## Merge the above two data frames
+adultN.est.long2 <- merge(adultN.est.long, sampled)
+
+## Read in sample history information to select a group of sites
+### Read in sample history file
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/fish data 115/'
+fileName <- 'sampleHist_115sites.csv'   
+sampleHist <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+
+### How many years was each site sampled?
+sampleHistBin <- sampleHist
+sampleHistBin[,2:30][sampleHist[,2:30] > 0] <- 1
+sampleHistBin$numSample <- apply(sampleHistBin[,2:30],1,sum,na.rm=T)
+# The line below is to calculate the number of survey between 1996-2010
+sampleHistBin$numSample2 <- apply(sampleHistBin[,16:30],1,sum,na.rm=T)
+sampleHistBin$siteID <- substr(sampleHistBin$SiteID, 3,9)
+
+### Merge this sample history to the bigger data frame
+adultN.est.long3 <- merge(adultN.est.long2, sampleHistBin[c("numSample","numSample2","siteID")])
+adultN.est.long3$year <- as.numeric(as.character(adultN.est.long3$year))
+
+####################################################################
+### This graph uses 1996-2010 data based on sites that were surveyed
+### at least 10 times
+####################################################################
+
+## How many sites were samples at least 10 times?
+table(sampleHistBin$numSample2)
+
+## identify sites used in the graph below
+adultTrendSites <- subset(sampleHistBin[c("siteID","numSample","numSample2")], 
+                                      numSample2 > 9)
+#write.csv(yoyTrendSites, file="yoyTrendSites.csv", row.names=FALSE)
+
+adultTrend <- ggplot(subset(adultN.est.long3[complete.cases(adultN.est.long3),], 
+              numSample2 > 9 & year > 1995),  # this line controls 
+       aes(x=year, y=pred, group=site)) + 
+  geom_line() + geom_point(shape=1,size=3)+
+  scale_x_continuous(breaks=1996:2010) +
+  xlab("Year") +
+  ylab("Predicted adult abundance") +
+  labs(title = "") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.5), angle=-60, hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/adult trend.png',sep=''), plot=adultTrend, dpi=dpiIn , width=6, height=3, units='in',scale=2 )
+```
+
+
+## Combine the YOY & adult abundance into a single graph
+```{r YOY & adult abundance}
+N.est.long3$age <- "YOY"
+adultN.est.long3$age <- "Adult"
+
+allN.est.long3 <- rbind(N.est.long3, adultN.est.long3)
+allN.est.long3$year <- as.numeric(as.character(allN.est.long3$year))
+allN.est.long3$age <- as.factor(allN.est.long3$age)
+
+allTrend <- ggplot(subset(allN.est.long3[complete.cases(allN.est.long3),], 
+              numSample2 > 8 & year > 1993),  # this line controls 
+       aes(x=year, y=pred, group=site)) + 
+  geom_line() + geom_point(shape=1,size=3)+
+  facet_grid(age ~ ., scales="free") +
+  scale_x_continuous(breaks=1994:2010) +
+  xlab("Year") +
+  ylab("Predicted abundance") +
+  labs(title = "") +
+  theme_bw() +
+  theme(panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.5), angle=-60, hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+allTrend
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/age-spec_trend.png',sep=''), plot=allTrend, dpi=dpiIn , width=4, height=3, units='in',scale=2 )
+
+# How many sites were useed in this graph?
+a <- subset(allN.est.long3[complete.cases(allN.est.long3),], 
+              numSample2 > 8 & year > 1993)  # check the ggplot above
+length(unique(a$siteID))
+```
+
+
+## yoy count at time t vs. adult count at time t+1
+```{r yoy t vs. adult t+1}
+## Important: select years for YOY & adult
+yoy.t <- subset(N.est.long2, year != 2010)          # 1982-2009
+adult.t1 <- subset(adultN.est.long2, year != 1982)  # 1983-2010
+
+## Combine and rename
+yoy.eff <- cbind(yoy.t[c("siteID","year","pred","sampled")], 
+                 adult.t1$siteID, adult.t1$year, adult.t1$pred, adult.t1$sampled)
+names(yoy.eff) <- c("yoySiteID","yoyYear","yoyPred","yoySampled",
+                    "aduSiteID","aduYear","aduPred","aduSampled")
+
+## Select consective years surveyed
+yoy.eff2 <- yoy.eff[complete.cases(yoy.eff),]
+
+## How many consecutive years does each site have?
+yoy.eff.hist <- aggregate(yoy.eff2$yoySampled, by=list(yoy.eff2$yoySiteID), FUN="sum")
+names(yoy.eff.hist) <- c("yoySiteID","nSample")
+
+## Merge
+yoy.eff2 <- merge(yoy.eff2, yoy.eff.hist)
+
+yoy.vs.adult <- ggplot(subset(yoy.eff2, nSample > 5), 
+       aes(x=log(yoyPred), y=log(aduPred), group=yoySiteID, color=yoySiteID)) + 
+  geom_point(shape=1,size=3)+
+  geom_smooth(method=lm, se=FALSE) + # color='black')+
+  xlab("log(YOY abundance) in year t") +
+  ylab("log(Adult abundance) in year t+1") +
+  labs(title = "") +
+  theme_bw() +
+  theme(legend.position="none",
+        panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.5), hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/yoy t vs adult t+1.png',sep=''), plot=yoy.vs.adult, dpi=dpiIn , width=4, height=3, units='in',scale=2 )
+
+
+## Fit regression for each site
+## http://stackoverflow.com/questions/6577058/extract-regression-coefficient-values-in-r
+## pull out slope & p-value for each site
+models1 <- ddply(subset(yoy.eff2, nSample > 5), "yoySiteID", function(df) 
+  summary.lm(lm(log(aduPred) ~ log(yoyPred), data = df))$coefficients[2,c(1,4)])
+## effect size based on direction and p-values 
+models1$effect.dir <- ifelse(models1[,3] > 0.10, 'no effect', 
+                             ifelse(models1$Estimate > 0, 'positive', 'negative'))
+table(models1$effect.dir)
+
+## t-test between "positive" vs. "no effect" sites
+### Read in site data again with watershed area
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/Than site data/'
+fileName <- 'WSarea_forKanno.csv'   
+WSarea <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+
+models1new <- merge(models1, WSarea, by.x="yoySiteID", by.y="SiteID")
+models1new$Elev_m <- as.numeric(as.character(models1new$Elev_m))
+## merge # samples in response to Grossman comment
+models1new <- merge(models1new, yoy.eff.hist, by.x="yoySiteID", by.y="yoySiteID")
+
+t.test(lattitude ~ effect.dir, data=models1new)
+t.test(Elev_m ~ effect.dir, data=models1new)
+boxplot(models1new$Elev_m ~ models1new$effect.dir)
+t.test(WatershedArea_ha ~ effect.dir, data=models1new)
+t.test(nSample ~ effect.dir, data=models1new)
+
+## Sample size for each site
+nSize <- subset(yoy.eff2, nSample > 5 & !duplicated(yoySiteID, fromLast = FALSE))
+summary(nSize$nSample)
+```
+
+
+## adult count at time t vs. yoy count at time t+1 (spawner-recruit relationship)
+```{r yoy t vs. adult t+1}
+## Important: select years for YOY & adult
+adult.t <- subset(adultN.est.long2, year != 2010)   # 1982-2009
+yoy.t1 <- subset(N.est.long2, year != 1982)         # 1983-2010
+
+## Combine and rename
+adult.eff <- cbind(adult.t[c("siteID","year","pred","sampled")], 
+                   yoy.t1$siteID, yoy.t1$year, yoy.t1$pred, yoy.t1$sampled)
+names(adult.eff) <- c("aduSiteID","aduYear","aduPred","aduSampled",
+                      "yoySiteID","yoyYear","yoyPred","yoySampled")
+
+## Select consective years surveyed
+adult.eff2 <- adult.eff[complete.cases(adult.eff),]
+
+## How many consecutive years does each site have?
+adult.eff.hist <- aggregate(adult.eff2$aduSampled, by=list(adult.eff2$aduSiteID), FUN="sum")
+names(adult.eff.hist) <- c("aduSiteID","nSample")
+
+## Merge
+adult.eff2 <- merge(adult.eff2, adult.eff.hist)
+
+adult.vs.yoy <- ggplot(subset(adult.eff2, nSample > 5), 
+       aes(x=log(aduPred), y=log(yoyPred), group=aduSiteID, color=aduSiteID)) + 
+  geom_point(shape=1,size=3)+
+  geom_smooth(method=lm, se=FALSE) + # color='black')+
+  xlab("log(Adult abundance) in year t") +
+  ylab("log(YOY abundance) in year t+1") +
+  labs(title = "") +
+  theme_bw() +
+  theme(legend.position="none",
+        panel.border=element_rect(colour='black'),
+        panel.grid.major=element_line(colour=NA),
+        panel.grid.minor=element_line(colour=NA),
+        strip.text = element_text(size=15),
+        axis.title.y = element_text(size = rel(1.5), angle=90),
+        axis.title.x = element_text(size = rel(1.5)),
+        axis.text.x = element_text(size = rel(1.5), hjust=0),
+        axis.text.y = element_text(size = rel(1.5)))
+
+dpiIn <- 600
+ggsave( file=paste(getwd(),'/adult t vs yoy t+1.png',sep=''), plot=adult.vs.yoy, dpi=dpiIn , width=4, height=3, units='in',scale=2 )
+
+
+
+## Fit regression for each site
+## http://stackoverflow.com/questions/6577058/extract-regression-coefficient-values-in-r
+## pull out slope & p-value for each site
+models2 <- ddply(subset(adult.eff2, nSample > 5), "yoySiteID", function(df) 
+  summary.lm(lm(log(yoyPred) ~ log(aduPred), data = df))$coefficients[2,c(1,4)])
+## effect size based on direction and p-values 
+models2$effect.dir <- ifelse(models2[,3] > 0.10, 'no effect', 
+                             ifelse(models2$Estimate > 0, 'positive', 'negative'))
+table(models2$effect.dir)
+
+
+## t-test between "negative" vs. "no effect" sites
+models2new <- merge(models2, WSarea, by.x="yoySiteID", by.y="SiteID")
+models2new$Elev_m <- as.numeric(as.character(models2new$Elev_m))
+## merge # samples in response to Grossman comment
+models2new <- merge(models2new, adult.eff.hist, by.x="yoySiteID", by.y="aduSiteID")
+                 
+t.test(lattitude ~ effect.dir, data=models2new)
+t.test(Elev_m ~ effect.dir, data=models2new)
+t.test(WatershedArea_ha ~ effect.dir, data=models2new)
+boxplot(models2new$WatershedArea_ha ~ models2new$effect.dir)
+t.test(nSample ~ effect.dir, data=models2new)
+```
+
+
+## Plots the above two graphs together
+```{r}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+## both plots
+multiplot(yoy.vs.adult, adult.vs.yoy, cols=2)
+```
+
+## How did capture probability vary temporally?
+```{r capture prob over time}
+### Julian date ###
+## mcmc outputs for intercept and Julian date slope
+out2.JulD <- data.frame(as.vector(out2$p.mean[1,,]), as.vector(out2$p.b[1,1,,]))
+names(out2.JulD) <- c("int.orig","JulianD")
+out2.JulD$int.logit <- log(out2.JulD$int.orig/(1-out2.JulD$int.orig))
+out2.JulD <- out2.JulD[c("int.orig", "int.logit", "JulianD")]
+
+## capture prob -1.5 & + 1.5 SD from mean sampling day
+## check 'G:\Conte\Broad spatial modelling\VA_yoy_count\data\covs for detection data 115' to see when they are
+out2.JulD$lowSD <- inv.logit(out2.JulD$int.logit - 1.5*out2.JulD$JulianD)
+mean(out2.JulD$lowSD); quantile(out2.JulD$lowSD, c(.025, .975))
+
+out2.JulD$highSD <- inv.logit(out2.JulD$int.logit + 1.5*out2.JulD$JulianD)
+mean(out2.JulD$highSD); quantile(out2.JulD$highSD, c(.025, .975))
+
+
+### pre-survey prcp ###
+## mcmc outputs for intercept and prcpTot slope
+out2.prcpTot <- data.frame(as.vector(out2$p.mean[1,,]), as.vector(out2$p.b[2,1,,]))
+names(out2.prcpTot) <- c("int.orig","prcp")
+out2.prcpTot$int.logit <- log(out2.prcpTot$int.orig/(1-out2.prcpTot$int.orig))
+out2.prcpTot <- out2.prcpTot[c("int.orig", "int.logit", "prcp")]
+
+## capture prob -1.5 & + 1.5 SD from mean prcpTot
+## check 'G:\Conte\Broad spatial modelling\VA_yoy_count\data\covs for detection data 115' to see when they are
+out2.prcpTot$lowSD <- inv.logit(out2.prcpTot$int.logit - 1.5*out2.prcpTot$prcp)
+mean(out2.prcpTot$lowSD); quantile(out2.prcpTot$lowSD, c(.025, .975))
+
+out2.prcpTot$highSD <- inv.logit(out2.prcpTot$int.logit + 1.5*out2.prcpTot$prcp)
+mean(out2.prcpTot$highSD); quantile(out2.prcpTot$highSD, c(.025, .975))
+
+
+### Watershed area ###
+## mcmc outputs for intercept and watershed area slope
+out2.area <- data.frame(as.vector(out2$p.mean[1,,]), as.vector(out2$p.b[3,1,,]))
+names(out2.area) <- c("int.orig","area")
+out2.area$int.logit <- log(out2.area$int.orig/(1-out2.area$int.orig))
+out2.area <- out2.area[c("int.orig", "int.logit", "area")]
+
+## capture prob -1.5 & + 1.5 SD from mean sampling day
+## check 'G:\Conte\Broad spatial modelling\VA_yoy_count\data\covs for detection data 115' to see when they are
+out2.area$lowSD <- inv.logit(out2.area$int.logit - 1.5*out2.area$area)
+mean(out2.area$lowSD); quantile(out2.area$lowSD, c(.025, .975))
+
+out2.area$highSD <- inv.logit(out2.area$int.logit + 1.5*out2.area$area)
+mean(out2.area$highSD); quantile(out2.area$highSD, c(.025, .975))
+
+mean(siteDf$area_km2) - 1.5*sd(siteDf$area_km2)  # report 1 km2 as the min in the ms 
+mean(siteDf$area_km2) + 1.5*sd(siteDf$area_km2)
+```
+
+
