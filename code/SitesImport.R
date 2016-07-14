@@ -37,6 +37,9 @@ Sites<-unique(SitesHUC2$site_no)
 parameterCd<-"00060" #set the parameter of interest at cfs
 rawDailyData<-readNWISdv(Sites,parameterCd, startDate = "1994-01-01", endDate = "2010-12-31") #statCd = "00003 defaults
 
+##did this on my desktop because I couldn't get the R package to work on the server
+load("~/flows_fish/rawDailyData.rdata")
+length(unique(rawDailyData$site_no)) #there are 47 sites with flow data from these days (from the 53 originally)
 
 ##Import fish Kanno et al sites##
 fishsiteDf <- read.csv("YK/siteDf.csv",colClasses="character") #7 variables, don't lose leading 0 by importing as chars
