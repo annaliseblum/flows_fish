@@ -5,9 +5,7 @@
 library(stringr)
 library("dataRetrieval") #to pull data from USGS site
 
-#annoying that dataRetriveal won't install
-
-####Import USGS gage site numbers####
+####Import USGS gage site numbers and basin characteristics####
 #Import list of sites in the eastern highland
 EastHi <- read.csv("data/RefEastHi.csv",colClasses="character") #7 variables
 EastHi$site_no<-str_pad(EastHi$STAID, 8, side="left", pad = "0") #pad with leading zeros until length is at least 8
@@ -40,6 +38,27 @@ SitesHUC2$LNG_GAGE<-as.numeric(SitesHUC2$LNG_GAGE)
 ##pulled USGS NWIS data on desktop because I couldn't get the R package to work on the server
 load("~/flows_fish/rawDailyData.rdata")
 length(unique(rawDailyData$site_no)) #there are 47 sites with flow data from these days (from the 53 originally)
+
+####USGS sites basin characteristics from GAGESII ####
+#annoying that dataRetriveal won't install on server
+GAGESII_Hydro <- read.csv("data/GAGESII_Hydro.csv",colClasses=c("character",rep("numeric",33))) #fix classes
+ncol(GAGESII_Hydro); head(GAGESII_Hydro)
+names(GAGESII_Hydro)[1]<-"site_no"
+
+GAGESII_Topo <- read.csv("data/GAGESII_Topo.csv",colClasses=c("character",rep("numeric",12))) #
+ncol(GAGESII_Topo); head(GAGESII_Topo)
+names(GAGESII_Topo)[1]<-"site_no"
+
+#Pull just the variables for which I have for the fish sites also
+names(GAGESII_Topo)
+GAGESII_TopoC<-GAGESII_Topo[c("site_no","SLOPE_PCT","ASPECT_DEGREES","ELEV_SITE_M","ELEV_MEAN_M_BASIN")]
+names(GAGESII_Hydro)
+GAGESII_HydroC<-GAGESII_Hydro[c("site_no","REACHCODE","BFI_AVE","TOPWET")]
+
+USGS_BC<-merge(SitesHUC2,GAGESII_HydroC,by="site_no")
+
+USGS_BC<-merge(USGS_BC,GAGESII_TopoC)
+save(USGS_BC,file="output/USGS_BC.rdata")
 
 ####Import fish site info from Kanno et al sites####
 fishsiteDf <- read.csv("YK/siteDf.csv",colClasses="character") #7 variables, don't lose leading 0 by importing as chars
