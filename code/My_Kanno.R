@@ -6,21 +6,23 @@ library(reshape2);library(rjags);library(plyr);library(ggplot2);library(knitr);l
 load.module("glm")
 
 ## Read in data
-load("~/fish/countArray 115 sites.rdata")
+
+## fish count data
+load("~/flows_fish/YK/countArray 115 sites.rdata")
 dim(countAr) #list of 4 (115  29   2   3)
 countAr[1:115, ,,] #to look at first part
 
 ## seasonal climate data
-load("~/fish/Site_by_year seasonal climate var standardized 115.rdata")
+load("~/flows_fish/YK/Site_by_year seasonal climate var standardized 115.rdata")
 
 ## site covariate data
-load("~/fish/standardized site cov 115 sites.rdata")
+load("~/flows_fish/YK/standardized site cov 115 sites.rdata")
 
 ## watershed area data
-load("~/fish/watershed area standardized 115 sites.rdata")
+load("~/flows_fish/YK/watershed area standardized 115 sites.rdata")
 
 ## detection covariate data
-load("~/fish/julian_prcpTot.rdata")
+load("~/flows_fish/YK/julian_prcpTot.rdata")
 
 ## replace NA in julian dates and prcpTot with 0
 julian.std.ar[is.na(julian.std.ar)] <- 0
@@ -59,7 +61,7 @@ init <- function() list( mu=runif(nAges,0,5),
 ## Running JAGS
 ## sequential
 set.seed(234)
-StageBurnin <- jags.model(paste("shen yoy model 3.5.r", sep=""),
+StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
                           dat, init, n.chains=3, n.adapt=100000)
 
 ## concise summary

@@ -4,7 +4,7 @@ Analysis started on 10/14/2014
 
 ## working directory & libraries
 ```{r working directory & libraries, warning=FALSE, message=FALSE}
-setwd('G:/Conte/Broad spatial modelling/VA_yoy_count/analysis/model 3.5/')
+# setwd('G:/Conte/Broad spatial modelling/VA_yoy_count/analysis/model 3.5/')
 getwd()
 library(reshape2)
 library(rjags)
@@ -19,19 +19,19 @@ load.module("glm")
 ## Read in data
 ```{r fish, climate & site cov}
 ## fish count data
-load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/fish data 115/countArray 115 sites.RData")
+load("~/flows_fish/YK/countArray 115 sites.rdata")
 
 ## seasonal climate data
-load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/seasonal climate data 115/Site_by_year seasonal climate var standardized 115.RData")
+load("~/flows_fish/YK/Site_by_year seasonal climate var standardized 115.rdata")
 
 ## site covariate data
-load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/site cov data 115/standardized site cov 115 sites.RData")
+load("~/flows_fish/YK/standardized site cov 115 sites.rdata")
 
 ## watershed area data
-load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/Than site data/watershed area standardized 115 sites.RData")
+load("~/flows_fish/YK/watershed area standardized 115 sites.rdata")
 
 ## detection covariate data
-load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/covs for detection data 115/julian_prcpTot.RData")
+load("~/flows_fish/YK/julian_prcpTot.rdata")
 ```
 
 ## replace NA in julian dates and prcpTot with 0
