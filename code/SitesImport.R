@@ -61,13 +61,14 @@ USGS_BC<-merge(USGS_BC,GAGESII_TopoC)
 save(USGS_BC,file="output/USGS_BC.rdata")
 
 ####Import fish site info from Kanno et al sites####
-fishsiteDf <- read.csv("YK/siteDf.csv",colClasses="character") #7 variables, don't lose leading 0 by importing as chars
+fishsiteDf <- read.csv("YK/siteDf.csv")
+save(fishsiteDf,file="output/fishsiteDf.rdata")
 names(fishsiteDf)
 fishsiteDf
 fishsiteDf$Lat_n83<-as.numeric(fishsiteDf$Lat_n83)
 fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
-fishsites <- read.csv("YK/WSarea_forKanno.csv") #7 variables, don't lose leading 0 by importing as chars
+fishsites <- read.csv("YK/WSarea_forKanno.csv")
 
 
 #figure out which 30 sites are the ones with 10 years of 3 passes 1994-2010

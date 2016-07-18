@@ -28,7 +28,7 @@ fitFE<-lm(log(min7day)~factor(site_no)+log(totprecip)+log(avgtmax.T)+log(DRAIN_S
            log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
 summary(fitFE)
 
-#season dummies
+#season dummies - average BFI super significant
 fitSD<-lm(log(min7day)~factor(season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
             log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
 summary(fitSD)
@@ -40,9 +40,16 @@ summary(fitSD)
 fit2<-lmer(log(min7day)~(1+log(totprecip)+log(avgtmax.T)|season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
              log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
 summary(fit2)
+ResidPlots(fit2)
+
+#try when not correlated
+fit3<-lmer(log(min7day)~(1|season)+(0+log(totprecip)|season)+(0+log(avgtmax.T)|season)+
+             log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
+             log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
+summary(fit3)
+ResidPlots(fit3)
 
 ##Or just do season-specific regressions?
-
 S.WFB$seasonfac[S.WFB$season=="winter"]<-1
 S.WFB$seasonfac[S.WFB$season=="spring"]<-2
 S.WFB$seasonfac[S.WFB$season=="summer"]<-3
@@ -66,9 +73,13 @@ fitF<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE
          data=S.WFB[S.WFB$season=="fall",])
 summary(fitF)
 
+falldata<-S.WFB[S.WFB$season=="fall",]
+falldata$preds<-predict(fitF)
+NSE(falldata$preds,falldata$min7day)
+NSE(log(falldata$preds),log(falldata$min7day))
 
 #### GOF and Residual plots ####
-ResidPlots(fitSD) # a lot of autocorrelation; use mean flow last season as X var??
+ResidPlots(fit2) # a lot of autocorrelation; use mean flow last season as X var??
 
 #first just check predictions
 S.WFB$preds<-exp(predict(fit2)) #fit2 fitSD
