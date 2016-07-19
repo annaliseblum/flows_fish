@@ -68,9 +68,6 @@ fishsiteDf
 fishsiteDf$Lat_n83<-as.numeric(fishsiteDf$Lat_n83)
 fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
-fishsites <- read.csv("YK/WSarea_forKanno.csv")
-
-
 #figure out which 30 sites are the ones with 10 years of 3 passes 1994-2010
 
 #### MAPS####

@@ -9,15 +9,12 @@ load("output/S.WFB.rdata")
 
 ####Model selection - all, then stepwise - Pooled model ####
 #Kanno used average max T, I find min to increase adjR2 by 0.0073
-fit1<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
-           log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
+fit1<-lm(log(min7day)~+log(totprecip)+log(avgtmax.T)+
+           log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
+           log(Elev_m), data=S.WFB)
 summary(fit1)
-
-# [1] "site_no"           "year"              "season"            "daysperseason"     "totprecip"        
-# [6] "avgtmax"           "avgtmin"           "min7day"           "DRAIN_SQKM"        "HUC02"            
-# [11] "LAT_GAGE"          "LNG_GAGE"          "STATE"             "DRAIN_SQMI"        "REACHCODE"        
-# [16] "BFI_AVE"           "TOPWET"            "SLOPE_PCT"         "ASPECT_DEGREES"    "ELEV_SITE_M"      
-# [21] "ELEV_MEAN_M_BASIN" "LNG_GAGE.T"        "avgtmax.T"         "avgtmin.T"  
+ResidPlots(fit1)
+#same season seasonal average flow (+log(avgSflow)) increases adjR2 to 84%
 
 #stepwise
 step <- stepAIC(fit1, direction="both")
@@ -32,15 +29,22 @@ summary(fitFE)
 fitSD<-lm(log(min7day)~factor(season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
             log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
 summary(fitSD)
+(exp(var(residuals(fitSD)))-1)^.5 #calculate SE-prediction
 
-####Model selection - stepwise - site-specific intercepts ####
-#how to deal with repeated site-specific vars? 
-#divide by DA and use BCs to predict the site-specific intercepts??
-
+####ME
 fit2<-lmer(log(min7day)~(1+log(totprecip)+log(avgtmax.T)|season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
              log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
 summary(fit2)
 ResidPlots(fit2)
+hist(resid(fit2))
+S.WFB$residFit2<-resid(fit2)
+(exp(var(residuals(fit2)))-1)^.5 #calculate SE-prediction
+
+issuesS<-unique(S.WFB$site_no[S.WFB$residFit2< -2]) #8 (of 29) sites account for the 41 residuals under -2
+length(unique(S.WFB$site_no))
+summary(USGS_BC) #are these sites different somehow??
+summary(S.WFB$ELEV_SITE_M[S.WFB$site_no==issuesS])
+S.WFB2<-S.WFB[which(S.WFB$site_no!=issuesS),]
 
 #try when not correlated
 fit3<-lmer(log(min7day)~(1|season)+(0+log(totprecip)|season)+(0+log(avgtmax.T)|season)+
@@ -48,41 +52,33 @@ fit3<-lmer(log(min7day)~(1|season)+(0+log(totprecip)|season)+(0+log(avgtmax.T)|s
              log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
 summary(fit3)
 ResidPlots(fit3)
+(exp(var(residuals(fit3)))-1)^.5 #calculate SE-prediction
 
-##Or just do season-specific regressions?
-S.WFB$seasonfac[S.WFB$season=="winter"]<-1
-S.WFB$seasonfac[S.WFB$season=="spring"]<-2
-S.WFB$seasonfac[S.WFB$season=="summer"]<-3
-S.WFB$seasonfac[S.WFB$season=="fall"]<-4
+fit4<-lmer(log(min7day)~(1|season)+(0+log(avgtmax.T)+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
+             log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),data=S.WFB,REML=F)
+summary(fit4)
+(exp(var(residuals(fit4)))-1)^.5 #calculate SE-prediction
 
-sNSE<-rep(NA,4)
-sLNSE<-rep(NA,4)
-
-for (i in 1:4){
-  seasondata<- S.WFB[which(S.WFB$seasonfac==i),]
-  Sfit<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
-             log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),
-           data=seasondata)
-  seasondata$preds<-exp(predict(Sfit))
-  sNSE[i]<-NSE(seasondata$preds,seasondata$min7day)
-  sLNSE[i]<-NSE(log(seasondata$preds),log(seasondata$min7day))
-}
-
-fitF<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
-            log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),
-         data=S.WFB[S.WFB$season=="fall",])
+####final Model - ME ####
+fitF<-lmer(log(min7day)~(1+log(totprecip)+log(avgtmax.T)|season)+log(totprecip)+log(avgtmax.T)+
+             log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
+             log(Elev_m), data=S.WFB)
 summary(fitF)
 
-falldata<-S.WFB[S.WFB$season=="fall",]
-falldata$preds<-predict(fitF)
-NSE(falldata$preds,falldata$min7day)
-NSE(log(falldata$preds),log(falldata$min7day))
+#### GOF and Residual plots ##
+ResidPlots(fitF)
 
-#### GOF and Residual plots ####
-ResidPlots(fit2) # a lot of autocorrelation; use mean flow last season as X var??
+#calculate SE-prediction
+(exp(var(residuals(fitF)))-1)^.5 #.95 !! eek
+
+#not sure which or how many of the  random effects should be correlated
+#somewhat arbitrarily chose this correlation between RE bc lowest (marginally  SE-pred)
+#remaining issues:
+#how to deal with repeated site-specific vars? 
+#divide by DA and use BCs to predict the site-specific intercepts??
 
 #first just check predictions
-S.WFB$preds<-exp(predict(fit2)) #fit2 fitSD
+S.WFB$preds<-exp(predict(fitF)) #fit2 fitSD
 plot(S.WFB$min7day,S.WFB$preds)
 abline(0,1)
 NSE(S.WFB$preds,S.WFB$min7day) #.67
@@ -92,16 +88,24 @@ NSE(log(S.WFB$preds),log(S.WFB$min7day)) #.8
 S.WFB$sNDX<-as.numeric(as.factor(x$site_no)) #site index
 site_no<-unique(S.WFB$site_no) #list of sites
 
+S.WFB$seasonfac[S.WFB$season=="winter"]<-1
+S.WFB$seasonfac[S.WFB$season=="spring"]<-2
+S.WFB$seasonfac[S.WFB$season=="summer"]<-3
+S.WFB$seasonfac[S.WFB$season=="fall"]<-4
+
 meNSE<-rep(NA,length(site_no)) #initalize vars
 meLNSE<-rep(NA,length(site_no))
+sNSE<-matrix(data=NA,nrow=length(site_no),4)
+sLNSE<-matrix(data=NA,nrow=length(site_no),4)
 for (i in 1:length(site_no)){
   #1 Subset data sets
   sitedata<-S.WFB[which(S.WFB$sNDX==i),]
   data_CV <- S.WFB[-which(S.WFB$sNDX==i),] #obtain data set with SITE i omitted
 
   #2 Estimate model
-  CV_ME<- lmer(log(min7day)~(1+log(totprecip)+log(avgtmax.T)|season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
-                  log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),data=data_CV,REML=F)
+  CV_ME<- lmer(log(min7day)~(1+log(totprecip)+log(avgtmax.T)|season)+log(totprecip)+
+                 log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
+                 log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+log(Elev_m), data=data_CV)
   
   #3 - Predict annual 7day min flows based on the 3 models and save
   sitedata$ME.pred<-exp(predict(CV_ME,sitedata))
@@ -109,9 +113,32 @@ for (i in 1:length(site_no)){
   #4 - GOF
   meNSE[i]<-NSE(sitedata$ME.pred,sitedata$min7day)
   meLNSE[i]<-NSE(log(sitedata$ME.pred),log(sitedata$min7day))
+  #5 GOF by season
+  for (j in 1:4){
+    seasondata<- sitedata[which(sitedata$seasonfac==j),]
+    sNSE[i,j]<-NSE(seasondata$ME.pred,seasondata$min7day)
+    sLNSE[i,j]<-NSE(log(seasondata$ME.pred),log(seasondata$min7day))
+  }
 }
-boxplot(meLNSE,fLNSE)
-boxplot(meNSE,fNSE)
+boxplot(meLNSE,meNSE)
+boxplot(meLNSE,meNSE,ylim=c(-1,1))
+
+#are low flow predictions better at certain times of year??
+boxplot(S.LNSE[,1],S.LNSE[,2],S.LNSE[,3],S.LNSE[,4],ylim=c(-1,1))
+
+#### Predict at fish sites ####
+FishPredRR<-exp(predict(fitF,S.WFC,allow.new.levels = T)) #get correct fish data
+names(S.WFC)
+S.WFC$RRpreds<-FishPredRR
+
+#collapse to annual level and merge in fish sample data
+RRA.WFC <- dcast(S.WFC, site_no + year.f ~ season,value.var = "RRpreds") #need to get wide format
+names(RRA.WFC)<-c("site_no","year.f","RRpredsfall", "RRpredsspring", "RRpredssummer", "RRpredswinter")
+
+#merge in with main data set
+class(A.FWC$site_no);class(RRA.WFC$site_no)
+class(A.FWC$year.f);class(RRA.WFC$year.f)
+A.FWC_RR<-merge(A.FWC,RRA.WFC,by=c("site_no","year.f"))
 
 #### 4 seasonal model; LOO-CV for the gaged sites ####
 S.WFB$sNDX<-as.numeric(as.factor(x$site_no)) #site index
@@ -141,9 +168,37 @@ for (i in 1:length(site_no)){
 boxplot(S.LNSE[,1],S.LNSE[,2],S.LNSE[,3],S.LNSE[,4],ylim=c(-1,1))
 #well that really didn't work...
 
+#### Or just do season-specific regressions? #
+S.WFB$seasonfac[S.WFB$season=="winter"]<-1
+S.WFB$seasonfac[S.WFB$season=="spring"]<-2
+S.WFB$seasonfac[S.WFB$season=="summer"]<-3
+S.WFB$seasonfac[S.WFB$season=="fall"]<-4
 
-#make S.WFB into a list of sites
-#begin function here
+sNSE<-rep(NA,4)
+sLNSE<-rep(NA,4)
+
+for (i in 1:4){
+  seasondata<- S.WFB[which(S.WFB$seasonfac==i),]
+  Sfit<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
+             log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),
+           data=seasondata)
+  seasondata$preds<-exp(predict(Sfit))
+  sNSE[i]<-NSE(seasondata$preds,seasondata$min7day)
+  sLNSE[i]<-NSE(log(seasondata$preds),log(seasondata$min7day))
+}
+
+fitF<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
+           log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),
+         data=S.WFB[S.WFB$season=="fall",])
+summary(fitF)
+
+falldata<-S.WFB[S.WFB$season=="fall",]
+falldata$preds<-predict(fitF)
+NSE(falldata$preds,falldata$min7day)
+NSE(log(falldata$preds),log(falldata$min7day))
+
+#### Function - make S.WFB into a list of sites ####
+#begin function here-OLD CODE from panel low flows project - ADAPT IF NECESSARY
 CV_LFs<-function(x){ #x=sitedata
   x$yrNDX<-as.numeric(as.factor(x$year))
   adjR2_SS<-vector(mode = "numeric", length = length(x$yrNDX))
@@ -194,3 +249,4 @@ CV_LFs<-function(x){ #x=sitedata
 #test<-CV_LFs(x)
 
 L_results<-lapply(list_LF,CV_LFs)
+

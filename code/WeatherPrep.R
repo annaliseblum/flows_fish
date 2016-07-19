@@ -25,16 +25,21 @@ SDAYMET <- ddply(DAYMET, .(site_no, year,season), summarize,
 head(SDAYMET)
 save(SDAYMET,file="output/SDAYMET.rdata")
 
+#need to get weather data for year starting the summer before sampling
+#so each fall and summer temps need to match with sampling a year later (year+1)
+SDAYMET$year<-as.integer(SDAYMET$year)
+SDAYMET$year.f <- ifelse(SDAYMET$season=="winter"|SDAYMET$season=="spring", SDAYMET$year, SDAYMET$year+1) 
+
 #get weather on annual level to match fish data #how to do this better??
-SDAYMETM <- dcast(SDAYMET, site_no + year ~ season,value.var = "totprecip") #need to get wide format
-names(SDAYMETM)<-c("site_no","year","Pfall", "Pspring", "Psummer", "Pwinter")
+SDAYMETM <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "totprecip") #need to get wide format
+names(SDAYMETM)<-c("site_no","year.f","Pfall", "Pspring", "Psummer", "Pwinter")
 
-SDAYMETM2 <- dcast(SDAYMET, site_no + year ~ season,value.var = "avgtmax") #need to get wide format
-names(SDAYMETM2)<-c("site_no","year","MaxTfall", "MaxTspring", "MaxTsummer", "MaxTwinter")
+SDAYMETM2 <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "avgtmax") #need to get wide format
+names(SDAYMETM2)<-c("site_no","year.f","MaxTfall", "MaxTspring", "MaxTsummer", "MaxTwinter")
 
-SDAYMETM3 <- dcast(SDAYMET, site_no + year ~ season,value.var = "avgtmin") #need to get wide format
-names(SDAYMETM3)<-c("site_no","year","MinTfall", "MinTspring", "MinTsummer", "MinTwinter")
+SDAYMETM3 <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "avgtmin") #need to get wide format
+names(SDAYMETM3)<-c("site_no","year.f","MinTfall", "MinTspring", "MinTsummer", "MinTwinter")
 
-annual.DAYMET<-merge(SDAYMETM,SDAYMETM2,by=c("site_no","year"))
-annual.DAYMET<-merge(annual.DAYMET,SDAYMETM3,by=c("site_no","year"))
+annual.DAYMET<-merge(SDAYMETM,SDAYMETM2,by=c("site_no","year.f"))
+annual.DAYMET<-merge(annual.DAYMET,SDAYMETM3,by=c("site_no","year.f"))
 save(annual.DAYMET,file="output/annual.DAYMET.rdata")
