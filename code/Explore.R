@@ -3,9 +3,11 @@
 #load merged data sets for plots
 load("output/S.WFB.rdata") #Seasonal flow data
 load("output/A.FWC.rdata") #Annual fish data
+load("output/USGS_BC.rdata")#USGS gages Basin Chars
+load("output/fishSC.rdata") #all the site characteristics available
 
 #### Flows plots ####
-data<-S.WFB
+data<-S.WFB #A.FW
 data$siteNDX<-as.numeric(as.factor(data$site_no))
 
 #are there trends in the low flows - plot by site over time
@@ -14,7 +16,7 @@ ggplot(data, aes(x=as.factor(year), y=min7day, color=as.factor(siteNDX))) +geom_
   scale_y_continuous(limits = c(0,100))
 
 #annual LFs occur during which seasons? Aflow works but why doesn't data??
-pdf("plots/TimingLFs.pdf",width=6,height=10) #
+pdf("plots/TimingLFs.pdf") #
 ggplot(data=Aflow, aes(x=season, y=min7day))+stat_summary(fun.y=length, geom="bar")+
   labs(x="", y="number of min7day flows in season", title="Timing of Annual 7day minimum flows") 
 dev.off()
@@ -29,7 +31,7 @@ ggplot(data=siteElevflow, aes(x=ELEV_SITE_M, y=medmin7day))+geom_point()
 #all the highest median7day are at lower elevation sites
 summary(lm(medmin7day~ELEV_SITE_M,siteElevflow)) #no relationship found
 
-##flows
+##flows A.Flows
 p1=ggplot(S.WFB, aes(x=as.factor(year), y=min7day)) + #, color=as.factor(fish_site))
   geom_boxplot()+ geom_smooth( se=TRUE, aes(group=1))+scale_y_continuous(limits = c(0,400))
 
@@ -90,5 +92,120 @@ pairs(~Pfall + Pspring + Psummer + Pwinter + MaxTfall + MaxTspring + MaxTsummer 
       upper.panel= panel.cor)
 dev.off()
 
+#### Paired weather Comparison ####
+
+length(unique(A.Flows$site_no)); length(unique(A.FWC$site_no))
+names(A.Flows)
+names(A.FWC)
+
+Sites_U.w<-A.Flows[c("site_no","year.f","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+                     "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
+                     "MinTwinter")]
+
+Sites_F.w<-A.FWC[c("site_no","year.f","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+                     "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
+                     "MinTwinter")]
+
+Sites_U.w$type<-"USGS"
+Sites_F.w$type<-"fish"
+
+Site_Comp2<-rbind(Sites_U.w,Sites_F.w)
+Site_Comp2$type<-as.factor(Site_Comp2$type)
+
+p1=ggplot(Site_Comp2, aes(factor(type), Pwinter)) + geom_boxplot()+ labs(title = "Winter Precipitation",x="",y="")
+
+ggplot(Site_Comp2, aes(x=as.factor(year.f), y=Pwinter)) + #, color=as.factor(fish_site))
+  geom_boxplot(aes(fill = factor(type))) #+ stat_smooth( aes(fill = factor(type)))
+
+stat_smooth(method=lm, aes(fill = factor(cyl)))
+
+p <- ggplot(mtcars, aes(factor(cyl), mpg)) + geom_boxplot(aes(fill = factor(am)))
+
+p + geom_boxplot()
+p 
+
+p2=ggplot(Site_Comp, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="")
+p3=ggplot(Site_Comp, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="")
+p4=ggplot(Site_Comp, aes(factor(type), Elev_m)) + geom_boxplot()+ labs(title = "Elevation (m)",x="",y="")
+
+pdf("plots/Site_comparison.pdf") #
+multiplot(p1, p2, p3, p4, cols=2)
+dev.off()
+
+summary(Site_Comp[Site_Comp$type=="fish",])
+summary(Site_Comp[Site_Comp$type=="USGS",])
+
+
+#### Basin Characteristics Comparison ####
+
+#PULL sites I'm actually using!
+
+#combine fish and USGS site characteristics to make boxplot comparisons
+names(USGS_BC1)
+names(fishSC1)
+
+Sites_U<-USGS_BC1[c("site_no","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
+Sites_F<-fishSC1[c("site_no","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
+
+Sites_U$type<-"USGS"
+Sites_F$type<-"fish"
+
+Site_Comp<-rbind(Sites_U,Sites_F)
+Site_Comp$type<-as.factor(Site_Comp$type)
+
+p1=ggplot(Site_Comp, aes(factor(type), DRAIN_SQMI)) + geom_boxplot()+ labs(title = "Drainage area (mi2)",x="",y="")
+p2=ggplot(Site_Comp, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="")
+p3=ggplot(Site_Comp, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="")
+p4=ggplot(Site_Comp, aes(factor(type), Elev_m)) + geom_boxplot()+ labs(title = "Elevation (m)",x="",y="")
+
+pdf("plots/Site_comparison.pdf") #
+multiplot(p1, p2, p3, p4, cols=2)
+dev.off()
+
+summary(Site_Comp[Site_Comp$type=="fish",])
+summary(Site_Comp[Site_Comp$type=="USGS",])
+
 #### Maps ####
+library("ggmap")
+library("ggplot2")
+
+summary(SitesHUC2$LAT_GAGE)
+summary(SitesHUC2$LNG_GAGE)
+
+summary(fishsiteDf$Lat_n83)
+summary(fishsiteDf$Lon_n83)
+
+# lat <- c(37, 41.5) #define our map's ylim
+# lon <- c(-81, -74.1) #define our map's xlim
+# center = c(mean(lat), mean(lon))  #tell what point to center on
+# myLocation<-c(mean(lat), mean(lon))
+# myLocation<-c(40, -82, 49,-67.1)
+myLocation<-"Shenandoah, Virginia"
+
+##All the sites
+myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom=7)
+pdf(file="plots/site_map.pdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = SitesHUC2, color="darkred",size = 3)+
+  geom_point(aes(x = Lon_n83, y = Lat_n83), data = fishsiteDf, color="black",size = 2)
+dev.off()
+
+##Just the 29/54 I'm using
+LL1<-USGS_BC1["LAT_GAGE","LNG_GAGE"]
+USGS_BC1$type<-"USGS"
+fishSC1$type<-"fish"
+justSites<-rbind(USGS_BC1,fishSC1)
+
+myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom=7)
+pdf(file="plots/site_map2.pdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = USGS_BC1, color="darkred",size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC1, color="black",size = 2)
+dev.off()
+
+##Map LNSE of gaged sites
+pdf(file="plots/site_map2.pdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE,col=meLNSE), data = USGS_BC1,size = 3)+
+  scale_colour_gradientn(colours =rainbow_hcl(7))
+dev.off()
+
+USGS_BC1
 

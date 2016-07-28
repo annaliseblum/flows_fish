@@ -1,6 +1,8 @@
 ##AB call she yoy model 3.5
 ##June 6, 2016
 
+##SLOPE STANDARDIZATION DOESN'T HAVE SD=1; FIX THIS
+
 getwd()
 library(reshape2);library(rjags);library(plyr);library(ggplot2);library(knitr);library(arm);library(boot)
 load.module("glm")
@@ -30,12 +32,12 @@ prcpTot.std.ar[is.na(prcpTot.std.ar)] <- 0
 
 ## Setting up for the JAGs model
 # data structure
-nSites=115; nYears=29; nAges=2; nPasses=3
+nSites=34; nYears=17; nAges=2; nPasses=3 ##I changed nSites and nYears
 nCovs=8
 
 # bundle data
 dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
-            y=countAr,  # three-pass of both adults & YOY
+            y=mycountAr,  # three-pass of both adults & YOY
             summer.temp=summerTempAryStd, fall.temp=fallTempAryStd,
             winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
             summer.prcp=summerPrcpAryStd, fall.prcp=fallPrcpAryStd,
@@ -68,10 +70,13 @@ StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
 Niter=50000
 Nthin=20
 pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
-          "p.mean","p.b","b.day","b.site") 
+          "p.mean","p.b","b.day","b.site","b") 
 out1 <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin)
 summary(out1)
 plot(out1)
+
+out1_df<-as.data.frame(as.matrix(out1))
+save(out1_df,file="output/out1_df.rdata")
 
 ## Gelman
 library(coda)

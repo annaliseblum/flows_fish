@@ -70,30 +70,6 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
 #figure out which 30 sites are the ones with 10 years of 3 passes 1994-2010
 
-#### MAPS####
-
-library("ggmap")
-library("ggplot2")
-
-summary(SitesHUC2$LAT_GAGE)
-summary(SitesHUC2$LNG_GAGE)
-
-summary(fishsiteDf$Lat_n83)
-summary(fishsiteDf$Lon_n83)
-
-# lat <- c(37, 41.5) #define our map's ylim
-# lon <- c(-81, -74.1) #define our map's xlim
-# center = c(mean(lat), mean(lon))  #tell what point to center on
-# myLocation<-c(mean(lat), mean(lon))
-# myLocation<-c(40, -82, 49,-67.1)
-myLocation<-"Shenandoah, Virginia"
-
-myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom=7)
-pdf(file="output/site_map.pdf")
-ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = SitesHUC2, color="darkred",size = 3)+
-  geom_point(aes(x = Lon_n83, y = Lat_n83), data = fishsiteDf, color="black",size = 2)
-dev.off()
-
 #### For Kyle - Pull Lat and Longs of the selected sites ####
 
 load("~/flows_fish/YK/countArray 115 sites.rdata")

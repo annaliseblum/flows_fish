@@ -108,16 +108,20 @@ sdata$year.f <- ifelse(sdata$season=="winter"|sdata$season=="spring", sdata$year
 sflow<-sdata
 save(sflow,file="output/sflow.rdata")
 
-
 ##collapse by year and season across sites
 avgFlowSites <- ddply(sflow, .(year.f,season), summarize, 
                   Avgdrought=mean(drought),
-                  Avgflood=mean(flood),
-                  avgSflow=mean(avgSflow)
+                  Avgflood=mean(flood)
+                  #, avgSflow=mean(avgSflow) #need to make this per DA at the least
 )
-ExtremesS <- dcast(avgFlowSites, year.f ~ Avgdrought+Avgflood,value.var = "totprecip")
-names(SDAYMETM)<-c("site_no","year.f","Pfall", "Pspring", "Psummer", "Pwinter")
 
+droughtS <- dcast(avgFlowSites, year.f ~ season,value.var = "Avgdrought")
+names(droughtS)<-c("year.f","Drfall", "Drspring", "Drsummer", "Drwinter")
+
+FloodS <- dcast(avgFlowSites, year.f ~ season,value.var = "Avgflood")
+names(FloodS)<-c("year.f","Flfall", "Flspring", "Flsummer", "Flwinter")
+
+Extremes<-merge(droughtS,FloodS,by="year.f")
 
 ##look at weather before floods and droughts to understand relationship at these sites
 

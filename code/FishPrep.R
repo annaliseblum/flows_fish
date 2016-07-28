@@ -20,7 +20,7 @@ countArS<-countAr[,13:29,,]
 apply(countArS[,,,],4,max,na.rm=T)
 alply(countArS,3)
 rownames(countArS)
-##NEED TO LEARN HOW TO DEAL WITH ARRAYS
+dimnames(countArS)
 
 Fish_sites1<-paste("F_",Fish_sites,sep="")
 
@@ -34,10 +34,11 @@ fish_YP1<-melt.data.frame(fishSitesSub,id.vars="SiteID")
 names(fish_YP1)<-c("site_no","year","YOY_P1")
 save(fish_YP1,file="output/fish_YP1.rdata")
 
+fishsitenos<-unique(fish_YP1$site_no)
 
 #maybe I can just melt into long like this for all 3 passes! and take max
 
-#why did I get rid of the F_? because of Df
+#why did I get rid of the F_? because of Df file 
 #NNpreds$Fish_site<-str_pad(NNpreds$fish_site,width=7, side="left",pad="F_")
 
 ###Fish site Characteristics ####
@@ -60,3 +61,17 @@ names(fishSC)<-c("site_no","DRAIN_SQMI","HUC8","LAT_GAGE","LNG_GAGE","REACH_CODE
                   "Slope_pct","Aspect_deg","Elev_m")
 
 save(fishSC,file="output/fishSC.rdata")
+
+####Array subset - just the sites I'm using! ####
+
+#want to just pull these site numbers from the array
+Fish_sites1
+
+#just need to get a vector with the location of the 34 sites within the 115
+matches<-match(rownames(countAr), Fish_sites1, nomatch=0)
+site.pos<-which(matches>0)
+
+dim(countAr[site.pos,,,]) #yesss
+
+mycountAr<-countAr[site.pos,13:29,,]
+
