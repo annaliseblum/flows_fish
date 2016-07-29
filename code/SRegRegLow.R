@@ -41,11 +41,14 @@ fitFE<-lm(log(min7day)~factor(site_no)+log(totprecip)+log(avgtmax.T)+
 summary(fitFE)
 (exp(var(residuals(fitFE)))-1)^.5 #calculate SE-prediction
 
-#season dummies - average BFI super significant
-fitSD<-lm(log(min7day)~factor(season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
-            log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M), data=S.WFB)
-summary(fitSD)
-(exp(var(residuals(fitSD)))-1)^.5 #calculate SE-prediction
+#try adding average BFI super significant, TOPWET isn't. Only increased adjR2 a little
+fitBFI<-lm(log(min7day)~log(totprecip)+
+             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+             log(DRAIN_SQMI)+log(LAT_GAGE)+log(Slope_pct)+log(Aspect_deg)+
+             log(Elev_m)+log(BFI_AVE), data=S.WFB)
+summary(fitBFI)
+(exp(var(residuals(fitBFI)))-1)^.5 #calculate SE-prediction
+ResidPlots(fitBFI)
 
 ####ME
 fit2<-lmer(log(min7day)~(1+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+
@@ -180,11 +183,15 @@ S.WFC$RRpreds<-FishPredRR
 
 #collapse to annual level and merge in fish sample data
 RRA.WFC <- dcast(S.WFC, site_no + year.f ~ season,value.var = "RRpreds") #need to get wide format
+head(RRA.WFC)
 names(RRA.WFC)<-c("site_no","year.f","RRpredsfall", "RRpredsspring", "RRpredssummer", "RRpredswinter")
 
 #merge in with main data set
 class(A.FWC$site_no);class(RRA.WFC$site_no)
 class(A.FWC$year.f);class(RRA.WFC$year.f)
+names(A.FWC)
+A.FWC$site_no<-paste("F_",A.FWC$site_no, sep = "")
+
 A.FWC_RR<-merge(A.FWC,RRA.WFC,by=c("site_no","year.f"))
 
 

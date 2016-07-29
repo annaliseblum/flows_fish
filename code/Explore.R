@@ -202,9 +202,9 @@ ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = USGS_BC1, color=
 dev.off()
 
 ##Map LNSE of gaged sites
-pdf(file="plots/site_map2.pdf")
+pdf(file="plots/LNSE_map.pdf")
 ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE,col=meLNSE), data = USGS_BC1,size = 3)+
-  scale_colour_gradientn(colours =rainbow_hcl(7))
+  scale_colour_gradientn(colours =rainbow(4))
 dev.off()
 
 USGS_BC1

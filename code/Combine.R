@@ -54,29 +54,14 @@ S.WFB$min7day[S.WFB$min7day==0]<- .005 #add .005 to the zeros so i can log
 #summary(S.WFB) #check for negatives: avgtmax, avgtmin,LNG_GAGE
 
 S.WFB$avgtmax.T<- S.WFB$avgtmax+3
-S.WFB$avgtmin.T<- S.WFB$avgtmin+10
+S.WFB$L1avgtmax.T<- S.WFB$L1avgtmax+3
+S.WFB$L2avgtmax.T<- S.WFB$L2avgtmax+3
+S.WFB$L3avgtmax.T<- S.WFB$L3avgtmax+3
+S.WFB$L4avgtmax.T<- S.WFB$L4avgtmax+3
+
+#S.WFB$avgtmin.T<- S.WFB$avgtmin+10
 S.WFB$LNG_GAGE.T<- S.WFB$LNG_GAGE+100
 summary(S.WFB)
-
-##get 1 year of lagged P and T
-#first create season variable that is a factor and numbers in chronological order
-S.WFB$season.f<- as.factor(ifelse(S.WFB$season=="winter",1,ifelse(S.WFB$season=="spring",2,ifelse(S.WFB$season=="summer",3,4))))
-
-#order by site, year, season
-slide0<-S.WFB[order(S.WFB$site_no,S.WFB$year,S.WFB$season.f),] #make sure order is correct
-
-#slide data
-slide1<-slide(slide0, Var= "totprecip", GroupVar= "site_no", NewVar= "L1totprecip", slideBy = -1)
-slide2<-slide(slide1, Var= "totprecip", GroupVar= "site_no", NewVar= "L2totprecip", slideBy = -2)
-slide3<-slide(slide2, Var= "totprecip", GroupVar= "site_no", NewVar= "L3totprecip", slideBy = -3)
-slide4<-slide(slide3, Var= "totprecip", GroupVar= "site_no", NewVar= "L4totprecip", slideBy = -4)
-
-slide5<-slide(slide4, Var= "avgtmax.T", GroupVar= "site_no", NewVar= "L1avgtmax.T", slideBy = -1)
-slide6<-slide(slide5, Var= "avgtmax.T", GroupVar= "site_no", NewVar= "L2avgtmax.T", slideBy = -2)
-slide7<-slide(slide6, Var= "avgtmax.T", GroupVar= "site_no", NewVar= "L3avgtmax.T", slideBy = -3)
-slide8<-slide(slide7, Var= "avgtmax.T", GroupVar= "site_no", NewVar= "L4avgtmax.T", slideBy = -4)
-
-S.WFB<-slide8
 
 save(S.WFB,file="output/S.WFB.rdata")
 
@@ -90,6 +75,7 @@ A.Flows<-merge(annual.DAYMET,aflow,by=c("site_no","year.f"))
 str(A.Flows)
 summary(A.Flows) #lose the 2011s in DAYMET because no fish data for then...
 length(unique(A.Flows$site_no)) #29
+
 #### 2 - Merge fish data with weather and basin characteristics ####
 names(fish_YP1)
 names(fishSC) 
@@ -118,12 +104,19 @@ save(A.FWC,file="output/A.FWC.rdata")
 
 ##Fish sites at SEASONAL level (for predictions with regional regression need this)
 class(SDAYMET$site_no);class(fishSC$site_no)
-S.WFC<-merge(SDAYMET,fishSC,by="site_no") #seasonal weather (W) with fish charactersitics (FC)
+SDAYMET1<-SDAYMET
+SDAYMET1$site_no<-paste("F_",SDAYMET1$site_no,sep="") #Fs missing
+S.WFC<-merge(SDAYMET1,fishSC,by="site_no") #seasonal weather (W) with fish charactersitics (FC)
 head(S.WFC)
 length(unique(S.WFC$site_no)) #34!! good
 
 #do same transformations as for the flow data
 S.WFC$avgtmax.T<- S.WFC$avgtmax+3
+S.WFC$L1avgtmax.T<- S.WFC$L1avgtmax+3
+S.WFC$L2avgtmax.T<- S.WFC$L2avgtmax+3
+S.WFC$L3avgtmax.T<- S.WFC$L3avgtmax+3
+S.WFC$L4avgtmax.T<- S.WFC$L4avgtmax+3
+
 S.WFC$avgtmin.T<- S.WFC$avgtmin+10
 S.WFC$LNG_GAGE.T<- S.WFC$LNG_GAGE+100
 summary(S.WFC)
