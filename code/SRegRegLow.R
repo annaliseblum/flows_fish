@@ -41,6 +41,15 @@ fitFE<-lm(log(min7day)~factor(site_no)+log(totprecip)+log(avgtmax.T)+
 summary(fitFE)
 (exp(var(residuals(fitFE)))-1)^.5 #calculate SE-prediction
 
+#check out SEASONAL dummies
+fitSeaD<-lm(log(min7day)~factor(season)+log(totprecip)+log(avgtmax.T)+
+            log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+            log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
+            log(Elev_m), data=S.WFB)
+summary(fitSeaD)
+(exp(var(residuals(fitFE)))-1)^.5 #calculate SE-prediction
+ResidPlots(fitSeaD)
+
 #try adding average BFI super significant, TOPWET isn't. Only increased adjR2 a little
 fitBFI<-lm(log(min7day)~log(totprecip)+
              log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
@@ -50,8 +59,8 @@ summary(fitBFI)
 (exp(var(residuals(fitBFI)))-1)^.5 #calculate SE-prediction
 ResidPlots(fitBFI)
 
-####ME
-fit2<-lmer(log(min7day)~(1+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+
+####ME - site-specific intercepts and slope on P, season-specific dummies
+fit2<-lmer(log(min7day)~(1+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
              log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
              log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
              log(Elev_m), data=S.WFB)
@@ -80,8 +89,27 @@ fit4<-lmer(log(min7day)~(1|season)+(0+log(avgtmax.T)+log(totprecip)|season)+log(
 summary(fit4)
 (exp(var(residuals(fit4)))-1)^.5 #calculate SE-prediction
 
+### add lagged average seasonal flow
+#same season average flow reduces pred-Cv to .68
+#lag 7daymin and avgSflow flows
+
+#sort data
+S.WFBsort<-S.WFB[order(S.WFB$site_no,as.numeric(S.WFB$year),S.WFB$season.f),] #make sure order is correct
+#S.WFBsort[1:30,]; tail(S.WFBsort) #spot check
+
+#slide data
+S.WFB_LF<-slide(S.WFBsort, Var= "avgSflow", GroupVar= "site_no", NewVar= "avgSflowL1", slideBy = -1)
+
+fitLF<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
+             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+             log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+ log(avgSflow)+
+             log(Elev_m), data=S.WFB_LF)
+summary(fitLF)
+#ResidPlots(fitLF)
+(exp(var(residuals(fitLF)))-1)^.5 #same month seasonal flow much biger t (25) compared to lagged (t=8)
+
 ####final Model - ME ####
-fitF<-lmer(log(min7day)~(1+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+
+fitF<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
              log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
              log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
              log(Elev_m), data=S.WFB)
@@ -91,7 +119,7 @@ summary(fitF)
 ResidPlots(fitF)
 
 #calculate SE-prediction
-(exp(var(residuals(fitF)))-1)^.5 #.85
+(exp(var(residuals(fitF)))-1)^.5 #.77 with corr intercept and slope for site; .79 with uncorr (was .85)
 
 #not sure which or how many of the  random effects should be correlated
 #somewhat arbitrarily chose this correlation between RE bc lowest (marginally  SE-pred)
@@ -106,11 +134,11 @@ abline(0,1)
 plot(log(S.WFB$min7day),log(S.WFB$preds)) #.8
 abline(0,1)
 
-NSE(S.WFB$preds,S.WFB$min7day) #.67
-NSE(log(S.WFB$preds),log(S.WFB$min7day)) #.8
+NSE(S.WFB$preds,S.WFB$min7day) #.76 (was .67)
+NSE(log(S.WFB$preds),log(S.WFB$min7day)) #.86 (was .8)
 
-#resids - just a few sites? Yes! only 5 sites for the 22 weird residuals
-S.WFB$resids<-residuals(fitF)
+#resids - just a few sites? Yes! only 7 sites for the 22 weird residuals
+S.WFB$resids<-residuals(fitF2)
 length(S.WFB$site_no[S.WFB$resids< -2.4])
 length(unique(S.WFB$site_no[S.WFB$resids< -2.4]))
 badsites<-unique(S.WFB$site_no[S.WFB$resids< -2.4])
@@ -137,23 +165,23 @@ for (i in 1:length(site_no)){
   data_CV <- S.WFB[-which(S.WFB$sNDX==i),] #obtain data set with SITE i omitted
 
   #2 Estimate model
-  CV_ME<- lmer(log(min7day)~(1+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+
+  CV_ME<- lmer(log(min7day)~(1+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
                  log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
                  log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
                  log(Elev_m), data=data_CV)
   
   #3 - Predict annual 7day min flows based on the 3 models and save
-  sitedata$ME.pred<-exp(predict(CV_ME,sitedata))
+  sitedata$ME.pred<-exp(predict(CV_ME,sitedata,allow.new.levels = T))
   
   #4 - GOF
   meNSE[i]<-NSE(sitedata$ME.pred,sitedata$min7day)
   meLNSE[i]<-NSE(log(sitedata$ME.pred),log(sitedata$min7day))
-  #5 GOF by season
-  for (j in 1:4){
-    seasondata<- sitedata[which(sitedata$season.f==j),]
-    sNSE[i,j]<-NSE(seasondata$ME.pred,seasondata$min7day)
-    sLNSE[i,j]<-NSE(log(seasondata$ME.pred),log(seasondata$min7day))
-  }
+  # #5 GOF by season
+  # for (j in 1:4){
+  #   seasondata<- sitedata[which(sitedata$season.f==j),]
+  #   sNSE[i,j]<-NSE(seasondata$ME.pred,seasondata$min7day)
+  #   sLNSE[i,j]<-NSE(log(seasondata$ME.pred),log(seasondata$min7day))
+  # }
 }
 boxplot(meLNSE,meNSE)
 boxplot(meLNSE,meNSE,ylim=c(-1,1),names=c("LNSE","NSE"),col=c("lightblue","grey"))
@@ -161,9 +189,9 @@ abline(0,0)
 
 sum(meNSE< -1)
 sum(meLNSE< -1)
-
-#are low flow predictions better at certain times of year??
-boxplot(S.LNSE[,1],S.LNSE[,2],S.LNSE[,3],S.LNSE[,4],ylim=c(-1,1))
+# 
+# #are low flow predictions better at certain times of year??
+# boxplot(S.LNSE[,1],S.LNSE[,2],S.LNSE[,3],S.LNSE[,4],ylim=c(-1,1))
 
 ##
 USGS_BC1$meLNSE<-meLNSE

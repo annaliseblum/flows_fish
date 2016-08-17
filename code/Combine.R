@@ -43,8 +43,8 @@ USGS_BC1<-merge(Usitelist,USGS_BC,by="site_no")
 # hist(S.WFB$avgtmin) #even less normal
 # hist(S.WFB$min7day) #lognormal?
 # summary(S.WFB$min7day)
-# sum(S.WFB$min7day==0) #5 of zero... 
-# sort(S.WFB$min7day[S.WF$min7day<.05]) #next lowest is 0.01 
+# sum(S.WFB$min7day==0) #7 of zero...
+# sort(S.WFB$min7day[S.WF$min7day<.05]) #next lowest is 0.004 some how? should be .01
 
 #replace zeros in LFs
 S.WFB$min7day[S.WFB$min7day==0]<- .005 #add .005 to the zeros so i can log
@@ -74,7 +74,7 @@ names(aflow)<-c("site_no","year.f","LFfall", "LFspring", "LFsummer", "LFwinter")
 A.Flows<-merge(annual.DAYMET,aflow,by=c("site_no","year.f"))
 str(A.Flows)
 summary(A.Flows) #lose the 2011s in DAYMET because no fish data for then...
-length(unique(A.Flows$site_no)) #29
+length(unique(A.Flows$site_no)) #45
 
 #### 2 - Merge fish data with weather and basin characteristics ####
 names(fish_YP1)

@@ -4,7 +4,6 @@
 library(DataCombine)
 library(ggplot2)
 
-
 load("~/flows_fish/rawDailyData.rdata")
 daily<-rawDailyData
 
@@ -30,9 +29,9 @@ rec.lengths<-aggregate(df2$cfs,by=list(df2$site_no),length)
 names(rec.lengths)<-c("site_no","daysofflow")
 df3<-data.frame(merge(df2, rec.lengths, by = c('site_no'))) #merge with flow data
 
-#drop sites with less than 15 years of flow data
-df4<-df3[df3$daysofflow>15*365,] #remove sites with less than 15 years of data
-length(unique(df4$site_no)) #29 sites remain
+#drop sites with less than 3 years of flow data
+df4<-df3[df3$daysofflow>3*365,] #remove sites with less than 3 (before 15 but lost too many) years of data
+length(unique(df4$site_no)) #45 sites remain!!
 
 #create 7day rolling averages
 #sort data

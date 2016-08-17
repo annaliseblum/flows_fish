@@ -86,7 +86,7 @@ panel.cor <- function(x, y, digits = 2, prefix = "corr=", cex.cor, ...)
   text(0.5, 0.5, txt, cex = cex.cor)
 }
 
-pdf("plots/Corr_Weather.pdf",width=6,height=10) #
+pdf("plots/Corr_WeatherF.pdf",width=6,height=10) #
 pairs(~Pfall + Pspring + Psummer + Pwinter + MaxTfall + MaxTspring + MaxTsummer + MaxTwinter,
       data=avgSites, lower.panel = panel.smooth,
       upper.panel= panel.cor)
@@ -144,8 +144,8 @@ summary(Site_Comp[Site_Comp$type=="USGS",])
 names(USGS_BC1)
 names(fishSC1)
 
-Sites_U<-USGS_BC1[c("site_no","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
-Sites_F<-fishSC1[c("site_no","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
+Sites_U<-USGS_BC1[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
+Sites_F<-fishSC1[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
 
 Sites_U$type<-"USGS"
 Sites_F$type<-"fish"
@@ -190,15 +190,15 @@ ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = SitesHUC2, color
 dev.off()
 
 ##Just the 29/54 I'm using
-LL1<-USGS_BC1["LAT_GAGE","LNG_GAGE"]
+LL1<-Sites_U["LAT_GAGE","LNG_GAGE"]
 USGS_BC1$type<-"USGS"
 fishSC1$type<-"fish"
 justSites<-rbind(USGS_BC1,fishSC1)
 
 myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom=7)
 pdf(file="plots/site_map2.pdf")
-ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = USGS_BC1, color="darkred",size = 3)+
-  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC1, color="black",size = 2)
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = Sites_U, color="darkred",size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = Sites_F, color="black",size = 2)
 dev.off()
 
 ##Map LNSE of gaged sites

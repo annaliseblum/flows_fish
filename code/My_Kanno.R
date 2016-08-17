@@ -12,7 +12,7 @@ load.module("glm")
 ## fish count data
 load("~/flows_fish/YK/countArray 115 sites.rdata")
 dim(countAr) #list of 4 (115  29   2   3)
-countAr[1:115, ,,] #to look at first part
+#countAr[1:115, ,,] #to look at first part
 
 ## seasonal climate data
 load("~/flows_fish/YK/Site_by_year seasonal climate var standardized 115.rdata")
@@ -32,12 +32,14 @@ prcpTot.std.ar[is.na(prcpTot.std.ar)] <- 0
 
 ## Setting up for the JAGs model
 # data structure
-nSites=34; nYears=17; nAges=2; nPasses=3 ##I changed nSites and nYears
+nSites=115; nYears=29; nAges=2; nPasses=3 ##I changed nSites and nYears
+
+#nSites=34; nYears=17; nAges=2; nPasses=3 ##I changed nSites and nYears
 nCovs=8
 
 # bundle data
 dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
-            y=mycountAr,  # three-pass of both adults & YOY
+            y=countAr,  # three-pass of both adults & YOY
             summer.temp=summerTempAryStd, fall.temp=fallTempAryStd,
             winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
             summer.prcp=summerPrcpAryStd, fall.prcp=fallPrcpAryStd,
@@ -69,14 +71,17 @@ StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
 ## concise summary
 Niter=50000
 Nthin=20
-pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
-          "p.mean","p.b","b.day","b.site","b") 
-out1 <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin)
+pars <- c("mu","sigmaN2","sigma2.b","g.0",
+          "p.mean","p.b","b.day","b.site","N") 
+outpaperFull <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin) #same as paper: 115 sites and 29 years
+
 summary(out1)
 plot(out1)
 
-out1_df<-as.data.frame(as.matrix(out1))
-save(out1_df,file="output/out1_df.rdata")
+outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
+save(outpaperFull_df,file="output/outpaperFull_df.rdata")
+
+
 
 ## Gelman
 library(coda)
@@ -85,7 +90,18 @@ gelman.diag(out1)
 ## detailed summary and for graphing
 pars2 <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
            "p.mean","p.b","b.day","b.site","b","N","p") 
-out2 <- jags.samples(StageBurnin, pars2, n.iter=Niter, thin=Nthin) ##STUCK HERE - WANTS ME TO RECOMPILE
+out2 <- jags.samples(StageBurnin, pars2, n.iter=Niter, thin=Nthin) 
+
+#pull out mean of bs
+outpaper2_df<-as.data.frame(as.matrix(outpaper2))
+save(outpaper2_df,file="output/outpaper2_df.rdata")
+
+sumoutpaper2 <-summary(outpaper2)
+head(summary(outpaper2)[2]$quantiles)
+colMeans(summary(outpaper2)[2]$quantiles)
+
+#  g.0[h,j] ~ dnorm(0, 0.01) where h is covariates (1=8) and j is ages 1 =YOY
+#want g.0[h,1]
 
 N.est <- p.est <- array(NA, dim=c(nSites,nYears,nAges))
 for(i in 1:nSites){
