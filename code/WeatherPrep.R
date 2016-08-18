@@ -48,12 +48,13 @@ slide8<-slide(slide7, Var= "avgtmax", GroupVar= "site_no", NewVar= "L4avgtmax", 
 
 head(slide8); tail(slide8)
 SDAYMET<-slide8
-save(SDAYMET,file="output/SDAYMET.rdata")
 
 #need to get weather data for year starting the summer before sampling
 #so each fall and summer temps need to match with sampling a year later (year+1)
 SDAYMET$year<-as.integer(SDAYMET$year)
 SDAYMET$year.f <- ifelse(SDAYMET$season=="winter"|SDAYMET$season=="spring", SDAYMET$year, SDAYMET$year+1) 
+
+save(SDAYMET,file="output/SDAYMET.rdata")
 
 #get weather on annual level to match fish data
 SDAYMETM <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "totprecip") #need to get wide format

@@ -138,7 +138,7 @@ NSE(S.WFB$preds,S.WFB$min7day) #.76 (was .67)
 NSE(log(S.WFB$preds),log(S.WFB$min7day)) #.86 (was .8)
 
 #resids - just a few sites? Yes! only 7 sites for the 22 weird residuals
-S.WFB$resids<-residuals(fitF2)
+S.WFB$resids<-residuals(fitF)
 length(S.WFB$site_no[S.WFB$resids< -2.4])
 length(unique(S.WFB$site_no[S.WFB$resids< -2.4]))
 badsites<-unique(S.WFB$site_no[S.WFB$resids< -2.4])
@@ -150,15 +150,11 @@ USGS_BC[USGS_BC$site_no==badsites[5],] #two small sites, two average, one big
 S.WFB$sNDX<-as.numeric(as.factor(S.WFB$site_no)) #site index
 site_no<-unique(S.WFB$site_no) #list of sites
 
-# S.WFB$seasonfac[S.WFB$season=="winter"]<-1
-# S.WFB$seasonfac[S.WFB$season=="spring"]<-2
-# S.WFB$seasonfac[S.WFB$season=="summer"]<-3
-# S.WFB$seasonfac[S.WFB$season=="fall"]<-4
-
 meNSE<-rep(NA,length(site_no)) #initalize vars
 meLNSE<-rep(NA,length(site_no))
 sNSE<-matrix(data=NA,nrow=length(site_no),4)
 sLNSE<-matrix(data=NA,nrow=length(site_no),4)
+
 for (i in 1:length(site_no)){
   #1 Subset data sets
   sitedata<-S.WFB[which(S.WFB$sNDX==i),]
@@ -176,13 +172,8 @@ for (i in 1:length(site_no)){
   #4 - GOF
   meNSE[i]<-NSE(sitedata$ME.pred,sitedata$min7day)
   meLNSE[i]<-NSE(log(sitedata$ME.pred),log(sitedata$min7day))
-  # #5 GOF by season
-  # for (j in 1:4){
-  #   seasondata<- sitedata[which(sitedata$season.f==j),]
-  #   sNSE[i,j]<-NSE(seasondata$ME.pred,seasondata$min7day)
-  #   sLNSE[i,j]<-NSE(log(seasondata$ME.pred),log(seasondata$min7day))
-  # }
 }
+
 boxplot(meLNSE,meNSE)
 boxplot(meLNSE,meNSE,ylim=c(-1,1),names=c("LNSE","NSE"),col=c("lightblue","grey"))
 abline(0,0)
@@ -209,7 +200,7 @@ FishPredRR<-exp(predict(fitF,S.WFC,allow.new.levels = T)) #get correct fish data
 names(S.WFC)
 S.WFC$RRpreds<-FishPredRR
 
-#collapse to annual level and merge in fish sample data
+#collapse to annual level and merge in fish sample data ##Error in eval(expr, envir, enclos) : object 'year.f' not found ##HERE START
 RRA.WFC <- dcast(S.WFC, site_no + year.f ~ season,value.var = "RRpreds") #need to get wide format
 head(RRA.WFC)
 names(RRA.WFC)<-c("site_no","year.f","RRpredsfall", "RRpredsspring", "RRpredssummer", "RRpredswinter")
@@ -218,7 +209,6 @@ names(RRA.WFC)<-c("site_no","year.f","RRpredsfall", "RRpredsspring", "RRpredssum
 class(A.FWC$site_no);class(RRA.WFC$site_no)
 class(A.FWC$year.f);class(RRA.WFC$year.f)
 names(A.FWC)
-A.FWC$site_no<-paste("F_",A.FWC$site_no, sep = "")
 
 A.FWC_RR<-merge(A.FWC,RRA.WFC,by=c("site_no","year.f"))
 

@@ -70,6 +70,11 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
 #figure out which 30 sites are the ones with 10 years of 3 passes 1994-2010
 
+#### Import UVA site info ####
+UVASitesLL <- read.csv("data/UVAsitesLL.csv")
+UVASitesLL$SITE_ID<-as.character(UVASitesLL$site)
+names(UVASitesLL)<-c("site_no","LONG","LAT")  
+
 #### For Kyle - Pull Lat and Longs of the selected sites ####
 
 load("~/flows_fish/YK/countArray 115 sites.rdata")
@@ -83,9 +88,9 @@ sum(YOYcountArP1$yr.rec>9) #sites with at least 10 years of fish counts (1st pas
 fishSites<-YOYcountArP1[YOYcountArP1$yr.rec>9,]
 
 fishSites$SiteID<-rownames(fishSites)
-fishSites$SiteID<-substr(fishSites$SiteID, 3, 7)
+fishSites$SiteID<-substr(fishSites$SiteID, 3, 9)
 fishSitesSub<-fishSites
-
+fishSites34<-fishSites$SiteID
 fishSites<-merge(fishSites,fishsiteDf,by="SiteID")
 
 fish_sitesLL<-fishSites[c("SiteID","Lon_n83","Lat_n83")]
@@ -100,3 +105,29 @@ save(SitesHUC2LL,file="output/SitesHUC2LL.rdata")
 AGBSites<-rbind(fish_sitesLL,SitesHUC2LL)
 
 save(AGBSites,file="output/AGBSites.rdata")
+
+##FROM KYLE ROUND 2
+R1sites<-fishSites$SiteID
+
+#find positions
+match(R1sites,Allsites)
+length(match(R1sites,Allsites))
+Allsites<-rownames(countAr)
+
+Newsites<-Allsites[-match(R1sites,Allsites)]
+Newsites_df<-data.frame(Newsites)
+names(Newsites_df)<-"SiteID"
+#both are factors, won't work for merging:
+Newsites_df$SiteID<-as.character(Newsites_df$SiteID);fishsiteDf$SiteID<-as.character(fishsiteDf$SiteID)
+
+#need to remove leading F_
+Newsites_df$SiteID<-substr(Newsites_df$SiteID, 3, 9)
+
+NEWfishSites<-merge(Newsites_df,fishsiteDf,by="SiteID")
+
+NEWAGBSites<-NEWfishSites[c("SiteID","Lon_n83","Lat_n83")]
+names(NEWAGBSites)<-c("site_no","LONG","LAT")
+
+NEWSites<-rbind(UVASitesLL,NEWAGBSites)
+NEWAGBSites<-NEWSites
+save(NEWAGBSites,file="output/NEWAGBSites.rdata")

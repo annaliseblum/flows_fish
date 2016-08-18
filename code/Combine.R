@@ -10,7 +10,7 @@ load("output/SDAYMET.rdata") #weather
 load("output/USGS_BC.rdata")#USGS gages Basin Chars
 
 #fish
-load("output/fish_YP1.rdata") #took just first pass, YOY for the 34 sites with 3 passes 1994-2010
+load("output/fish_YAbu34.rdata") #before fish_YP1 took just first pass, YOY for the 34 sites with 3 passes 1994-2010
 load("output/annual.DAYMET.rdata") #daymet weather melted wide
 load("output/fishSC.rdata") #all the site characteristics available
 
@@ -77,18 +77,18 @@ summary(A.Flows) #lose the 2011s in DAYMET because no fish data for then...
 length(unique(A.Flows$site_no)) #45
 
 #### 2 - Merge fish data with weather and basin characteristics ####
-names(fish_YP1)
+names(fish_YAbu34)
 names(fishSC) 
-names(fish_YP1)[1]<-"site_no" #rename as site_no to be consistent
+#names(fish_YP1)[1]<-"site_no" #rename as site_no to be consistent
 
-class(annual.DAYMET$site_no); class(fish_YP1$site_no); class(fishSC$site_no) #need to be all character to merge
+class(annual.DAYMET$site_no); class(fish_YAbu34$site_no); class(fishSC$site_no) #need to be all character to merge
 fishSC$site_no<-as.character(fishSC$site_no)
 
-fish_YP1$year.f<-as.numeric(as.character(fish_YP1$year)) #fish years are the same as years for the fish data (they are really summer-spring)
-class(annual.DAYMET$year.f); class(fish_YP1$year.f) 
+fish_YAbu34$year.f<-as.numeric(as.character(fish_YAbu34$year)) #fish years are the same as years for the fish data (they are really summer-spring)
+class(annual.DAYMET$year.f); class(fish_YAbu34$year.f) 
 
 #merge at year and site
-A.FW<-merge(annual.DAYMET,fish_YP1,by=c("site_no","year.f"))
+A.FW<-merge(annual.DAYMET,fish_YAbu34,by=c("site_no","year.f"))
 str(A.FW)
 summary(A.FW) #lose the 2011s in DAYMET because no fish data for then...
 length(unique(A.FW$site_no)) #34 sites all made it!
@@ -104,9 +104,7 @@ save(A.FWC,file="output/A.FWC.rdata")
 
 ##Fish sites at SEASONAL level (for predictions with regional regression need this)
 class(SDAYMET$site_no);class(fishSC$site_no)
-SDAYMET1<-SDAYMET
-SDAYMET1$site_no<-paste("F_",SDAYMET1$site_no,sep="") #Fs missing
-S.WFC<-merge(SDAYMET1,fishSC,by="site_no") #seasonal weather (W) with fish charactersitics (FC)
+S.WFC<-merge(SDAYMET,fishSC,by="site_no") #seasonal weather (W) with fish charactersitics (FC)
 head(S.WFC)
 length(unique(S.WFC$site_no)) #34!! good
 
@@ -125,9 +123,9 @@ summary(S.WFC)
 save(S.WFC,file="output/S.WFC.rdata")
 
 #fish
-Fsitelist<-as.data.frame(Fish_sites1$site_no)
-names(Fsitelist)<-"site_no"; Fsitelist$site_no<-as.character(Fsitelist$site_no)
-fishSC$site_no<-paste("F_",fishSC$site_no, sep = "")
-#pull just 34 fish sites from all 115
-fishSC1<-merge(Fsitelist,fishSC,by="site_no")
-summary(fishSC1$DRAIN_SQMI)
+# Fsitelist<-as.data.frame(Fish_sites1$site_no)
+# names(Fsitelist)<-"site_no"; Fsitelist$site_no<-as.character(Fsitelist$site_no)
+# fishSC$site_no<-paste("F_",fishSC$site_no, sep = "")
+# #pull just 34 fish sites from all 115
+# fishSC1<-merge(Fsitelist,fishSC,by="site_no")
+# summary(fishSC1$DRAIN_SQMI)
