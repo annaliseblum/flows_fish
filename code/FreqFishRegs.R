@@ -23,22 +23,23 @@ newfit<-lm(YOY_P1 ~ RRpredsfall + RRpredsspring,data=A.FWC_RR)
 summary(newfit)
 
 ##Stepwise selects a model with my flow predicitons for both spring and winter!
-fit<-lm(YOY_P1 ~ RRpredsspring + RRpredswinter + Pfall + Psummer + Pwinter + 
+fit<-lm(EstYOYAbu ~ RRpredsspring + RRpredswinter + Pfall + Psummer + Pwinter + 
   MaxTspring,data=A.FWC_RR)
 summary(fit)
 
 #### poisson regression ####
-fit2<-glm(YOY_P1 ~ RRpredsspring + RRpredswinter + Pfall + Psummer + Pwinter + 
+fit2<-glm(EstYOYAbu ~ RRpredsspring + RRpredswinter + Pfall + Psummer + Pwinter + 
             MaxTspring,data=A.FWC_RR,family=poisson)
 summary(fit2)
 
 #### mixed effects - RIpoisson regression ####
-fit3<-glmer(YOY_P1~(1|site_no)+Pfall + Pspring + Psummer + Pwinter + MaxTfall + MaxTspring + MaxTsummer + MaxTwinter,
+fit3<-glmer(EstYOYAbu~(1|site_no)+Pfall + Pspring + Psummer + Pwinter + MaxTfall + MaxTspring + MaxTsummer + MaxTwinter,
           A.FWC,family=poisson)
 summary(fit3)
+## this didn't work!! why??
 
 #with flow preds
-newfit2<-glmer(YOY_P1 ~(1|site_no)+ RRpredsfall + RRpredswinter,data=A.FWC_RR,family=poisson)
+newfit2<-glmer(EstYOYAbu ~(1|site_no)+ RRpredsfall + RRpredswinter,data=A.FWC_RR,family=poisson)
 summary(newfit2)
 
 newfit3<-glmer(YOY_P1 ~(1|site_no)+scale(RRpredsfall)+scale(RRpredssummer)+scale(RRpredswinter)

@@ -82,6 +82,24 @@ outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
 save(outpaperFull_df,file="output/outpaperFull_df.rdata")
 
 
+##with JAAGUI - started at 12:10 pm - ended 4:30 pm
+nc=3;ni=50000; nt=20; nb=10000
+pars <- c("mu","sigmaN2","sigma2.b","g.0",
+          "p.mean","p.b","b.day","b.site") 
+
+library(jagsUI)
+outJUI <- jags(
+  data=dat,
+  inits=init,
+  model = paste("YK/shen yoy model 3.5.r", sep=""),
+  parameters.to.save = pars,
+  n.chains=nc,
+  n.iter = ni,
+  n.thin = nt,
+  n.burnin=nb,
+  parallel=T)
+
+summary(outJUI)
 
 ## Gelman
 library(coda)
