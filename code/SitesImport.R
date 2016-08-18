@@ -71,7 +71,8 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 #figure out which 30 sites are the ones with 10 years of 3 passes 1994-2010
 
 #### Import UVA site info ####
-UVASitesLL <- read.csv("data/UVAsitesLL.csv")
+
+UVAstreamSites <- read.csv("data/UVAstreamsites.csv")
 UVASitesLL$SITE_ID<-as.character(UVASitesLL$site)
 names(UVASitesLL)<-c("site_no","LONG","LAT")  
 
@@ -127,6 +128,11 @@ NEWfishSites<-merge(Newsites_df,fishsiteDf,by="SiteID")
 
 NEWAGBSites<-NEWfishSites[c("SiteID","Lon_n83","Lat_n83")]
 names(NEWAGBSites)<-c("site_no","LONG","LAT")
+
+#Pull in uva sites
+UVASitesLL <- read.csv("data/UVAsitesLL.csv")
+UVASitesLL$SITE_ID<-as.character(UVASitesLL$site)
+names(UVASitesLL)<-c("site_no","LONG","LAT")  
 
 NEWSites<-rbind(UVASitesLL,NEWAGBSites)
 NEWAGBSites<-NEWSites
