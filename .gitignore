@@ -3,4 +3,6 @@
 .RData
 .Ruserdata
 
+#ignore data files (also should really ignore rdata, do that if necessary)
 *.xlsx
+*.csv

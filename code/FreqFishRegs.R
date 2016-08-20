@@ -1,50 +1,56 @@
 ##Preliminary frequentist regressions
-##July 19,2016
+##July 19,2016; updated Aug 19, 2016
 ##Annalise Blum
 
-#load fish-weather-site characteristics data
-load("output/A.FWC.rdata")
-
 #### OLS linear regression ####
-fit<-lm(YOY_P1~RRpredsfall+RRpredsspring+RRpredssummer+RRpredswinter+
+fit<-lm(EstYOYAbu~RRpredsfall+RRpredsspring+RRpredssummer+RRpredswinter+
           Pfall + Pspring + Psummer + Pwinter+
           MaxTfall + MaxTspring + MaxTsummer + MaxTwinter
         ,data=A.FWC_RR)
 summary(fit)
 
-fit<-lm(YOY_P1 ~ RRpredsfall + RRpredsspring + RRpredssummer + RRpredswinter + 
+fitP<-lm(EstYOYAbu ~ RRpredsfall + RRpredsspring + RRpredssummer + RRpredswinter + 
   MaxTwinter,data=A.FWC_RR)
-summary(fit)
+summary(fitP)
+
+#with standardized vars
+fitPs<-lm(EstYOYAbu ~ fallPmin7day + springPmin7day + summerPmin7day + winterPmin7day + 
+            winterTempStd,data=AbuPFlows)
+summary(fitPs)
 
 step <- stepAIC(fit, direction="both")
 step$anova
 
-newfit<-lm(YOY_P1 ~ RRpredsfall + RRpredsspring,data=A.FWC_RR)
-summary(newfit)
+##Stepwise selects a model with my flow predicitons for both fall and winter!
+fitPs<-lm(EstYOYAbu ~ fallPmin7day +  winterPmin7day+ springPmin7day + summerPmin7day + 
+            fallPmin7day+winterTempStd+springTempStd+summerTempStd,data=AbuPFlows)
+summary(fitPs)
 
-##Stepwise selects a model with my flow predicitons for both spring and winter!
-fit<-lm(EstYOYAbu ~ RRpredsspring + RRpredswinter + Pfall + Psummer + Pwinter + 
-  MaxTspring,data=A.FWC_RR)
-summary(fit)
+step <- stepAIC(fitPs, direction="both")
+step$anova
+
+fitStepW<-lm(EstYOYAbu ~ fallPmin7day + winterPmin7day + summerPmin7day + 
+               springTempStd,data=AbuPFlows)
+summary(fitStepW)
 
 #### poisson regression ####
-fit2<-glm(EstYOYAbu ~ RRpredsspring + RRpredswinter + Pfall + Psummer + Pwinter + 
-            MaxTspring,data=A.FWC_RR,family=poisson)
+fit2<-glm(RYOYAbu ~ fallPmin7day +  winterPmin7day+ springPmin7day + summerPmin7day + 
+            fallPmin7day+winterTempStd+springTempStd+summerTempStd,data=AbuPFlows,family=poisson)
 summary(fit2)
 
 #### mixed effects - RIpoisson regression ####
-fit3<-glmer(EstYOYAbu~(1|site_no)+Pfall + Pspring + Psummer + Pwinter + MaxTfall + MaxTspring + MaxTsummer + MaxTwinter,
-          A.FWC,family=poisson)
+fit3<-glmer(RYOYAbu~(1|site_no)+fallPmin7day +  summerPmin7day + 
+              fallPmin7day+winterTempStd+springTempStd+summerTempStd,data=AbuPFlows,family=poisson)
 summary(fit3)
-## this didn't work!! why??
+#since this is low flows, just do LFs hypotheses: need higher low flows in fall and summer, so
 
-#with flow preds
-newfit2<-glmer(EstYOYAbu ~(1|site_no)+ RRpredsfall + RRpredswinter,data=A.FWC_RR,family=poisson)
-summary(newfit2)
+#first preliminary model to use CV:
+model5<-glmer(RYOYAbu ~(1|site_no)+fallPmin7day+ #fallTempStd+ #corr is .69 between fall temp and fall flow - that doesn't make sense...
+                winterTempStd+springTempStd
+               ,data=AbuPFlows,family=poisson)
+summary(model5) 
 
-newfit3<-glmer(YOY_P1 ~(1|site_no)+scale(RRpredsfall)+scale(RRpredssummer)+scale(RRpredswinter)
-               ,data=A.FWC_RR,family=poisson)
-summary(newfit3)
+AbuPFlows$preds<-predict(model5)
 
 #### Average across sites - annual-level TS regression ####
 A.FWC$tally<-1

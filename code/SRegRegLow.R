@@ -115,6 +115,8 @@ fitF<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+(1|season)+log(to
              log(Elev_m), data=S.WFB)
 summary(fitF)
 
+##neither Slope_pct nor Aspect_deg is statistically sig (t values < -.2)
+
 #### GOF and Residual plots ##
 ResidPlots(fitF)
 
@@ -212,5 +214,5 @@ names(A.FWC)
 
 A.FWC_RR<-merge(A.FWC,RRA.WFC,by=c("site_no","year.f"))
 
-
+save(A.FWC_RR,file="output/A.FWC_RR.rdata")
 

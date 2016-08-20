@@ -129,4 +129,14 @@ Extremes<-merge(droughtS,FloodS,by="year.f")
 aflow <- aggregate(sflow$min7day,by=list(sflow$site_no, sflow$year),FUN=min)
 names(aflow)<-c("site_no","year","min7day")
 Aflow<-merge(aflow,sflow,by=c("site_no","year","min7day"))
-  
+
+
+#### UVA flow data prep
+UVAstreamsSC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
+UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
+
+#aggregate to daily values
+UVA_daily<-aggregate(UVA_Discharge$cfs,by=list(UVA_Discharge$StationID,UVA_Discharge$year,UVA_Discharge$month,UVA_Discharge$day),mean)
+names(UVA_daily)<-c("UVAsite","year","month","day","daily_cfs")
+
+save(UVA_daily,file="data/UVA_daily.rdata")

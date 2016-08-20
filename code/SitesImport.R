@@ -72,9 +72,9 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
 #### Import UVA site info ####
 
-UVAstreamSites <- read.csv("data/UVAstreamsites.csv")
-UVASitesLL$SITE_ID<-as.character(UVASitesLL$site)
-names(UVASitesLL)<-c("site_no","LONG","LAT")  
+UVAstreamsSC <- ("data/UVAstreamsites.csv") #import site characteristics
+UVA_Discharge <- ("data/SWAS_data.csv") #import discharge data
+
 
 #### For Kyle - Pull Lat and Longs of the selected sites ####
 
