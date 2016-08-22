@@ -148,6 +148,34 @@ USGS_BC[USGS_BC$site_no==badsites[5],] #two small sites, two average, one big
 
 #remove these 5 sites?? ex: d<-d[!(d$A=="B" & d$E==0),]
 
+####Just fall Low flows ####
+fall.WFB<-S.WFB[S.WFB$season=="fall",] #pull just fall flows
+
+lmfitfall<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+
+                log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+                log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
+                log(Elev_m), data=fall.WFB)
+summary(lmfitfall)
+
+##removing non-significant ones:
+lmfitfall<-lm(log(min7day)~log(totprecip)+
+                log(L1totprecip)+log(L3totprecip)+log(L4totprecip)+
+                log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+
+                log(Elev_m), data=fall.WFB)
+summary(lmfitfall)
+ResidPlots(lmfitfall)
+
+#log(L1avgtmax.T)+  #log(L4avgtmax.T) significant, but because corr with L1maxT is .73
+
+fitfall<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+log(totprecip)+log(avgtmax.T)+
+                log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+
+                log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Elev_m)
+                , data=fall.WFB)
+
+summary(fitfall)
+ResidPlots(fitfall)
+
+
 #### LOO-CV for the gaged sites ####
 S.WFB$sNDX<-as.numeric(as.factor(S.WFB$site_no)) #site index
 site_no<-unique(S.WFB$site_no) #list of sites
@@ -197,6 +225,7 @@ for (i in 1:length(fishSC1$DRAIN_SQMI)){
 }
 
 USGS_BC1[USGS_BC1$meLNSE< -1,]
+
 #### Predict at fish sites ####
 FishPredRR<-exp(predict(fitF,S.WFC,allow.new.levels = T)) #get correct fish data
 names(S.WFC)

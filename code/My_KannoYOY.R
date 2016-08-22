@@ -41,6 +41,11 @@ winterTempAryStd34<-winterTempAryStd[site.pos,13:29]
 springTempAryStd34<-springTempAryStd[site.pos,13:29]
 summerTempAryStd34<-summerTempAryStd[site.pos,13:29]
 
+fallPrcpAryStd34<-fallPrcpAryStd[site.pos,13:29]
+winterPrcpAryStd34<-winterPrcpAryStd[site.pos,13:29]
+springPrcpAryStd34<-springPrcpAryStd[site.pos,13:29]
+summerPrcpAryStd34<-summerPrcpAryStd[site.pos,13:29]
+
 str(julian.std.ar); dim(julian.std.ar)
 julian.std.ar34<-julian.std.ar[site.pos,13:29]
 prcpTot.std.ar34<-prcpTot.std.ar[site.pos,13:29]
@@ -52,14 +57,14 @@ area.std34=area.std[site.pos]
 
 ## Setting up for the JAGs model
 # data structure
-nSites34=34; nYears34=17; nPasses34=3 ##I changed nSites and nYears #removed nAges=2;
+nSites34=34; nYears34=17; nPasses34=3; nAges = 1 ##I changed nSites and nYears #removed nAges=2;
 nCovs=8
 
 #remove adults from data array
 dimnames(mycountAr)
 
 # bundle data
-dat <- list(nSites=nSites34, nYears=nYears34, nCovs=nCovs, #nAges=nAges,
+dat <- list(nSites=nSites34, nYears=nYears34, nCovs=nCovs, # nAges=nAges,
             y=mycountAr,  # three-pass of both adults & YOY
             summer.temp=summerTempAryStd34, fall.temp=fallTempAryStd34,
             winter.temp=winterTempAryStd34, spring.temp=springTempAryStd34,
@@ -69,16 +74,30 @@ dat <- list(nSites=nSites34, nYears=nYears34, nCovs=nCovs, #nAges=nAges,
             julian=julian.std.ar34, prcpTot=prcpTot.std.ar34, area=area.std34)
 
 ## set initial values
+# init <- function() list( mu=runif(nAges,0,5),
+#                          eps=array(runif(nSites*nYears*nAges,-1,1), c(nSites,nYears,nAges)),
+#                          b=array(rnorm(nCovs*nSites*nAges,0,2), c(nCovs,nSites,nAges)),
+#                          sigmaN=runif(2,0,3), 
+#                          sigma.b=array(runif(nCovs*nAges,0,3), c(nCovs,nAges)),
+#                          g.0=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)), 
+#                          g.1=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
+#                          g.2=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
+#                          g.3=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
+#                          p.mean=rep(0.5,2), p.b=array(rnorm(3*nAges,0,0.5), c(3,nAges)), 
+#                          N=array(500, dim=c(nSites, nYears, nAges)),
+#                          b.day=runif(nAges,-2,2),
+#                          b.site=array(rnorm(3*nAges,0,0.5), c(3,nAges)))
+## set initial values
 init <- function() list( mu=runif(1,0,5),
                          eps=array(runif(nSites*nYears,-1,1), c(nSites,nYears)),
                          b=array(rnorm(nCovs*nSites,0,2), c(nCovs,nSites)),
-                         sigmaN=runif(1,0,3), 
+                         sigmaN=runif(1,0,3),
                          sigma.b=array(runif(nCovs,0,3), c(nCovs)),
-                         g.0=array(rnorm(nCovs,0), c(nCovs)), 
+                         g.0=array(rnorm(nCovs,0), c(nCovs)),
                          g.1=array(rnorm(nCovs,0), c(nCovs)),
                          g.2=array(rnorm(nCovs,0), c(nCovs)),
                          g.3=array(rnorm(nCovs,0), c(nCovs)),
-                         p.mean=0.5, p.b=array(rnorm(3,0,0.5), c(3)), 
+                         p.mean=0.5, p.b=array(rnorm(3,0,0.5), c(3)),
                          N=array(500, dim=c(nSites, nYears)),
                          b.day=runif(1,-2,2),
                          b.site=array(rnorm(3,0,0.5), c(3)))
@@ -86,7 +105,7 @@ init <- function() list( mu=runif(1,0,5),
 ## Running JAGS
 ## sequential
 set.seed(234)
-StageBurnin <- jags.model(paste("code/My shen yoy model 3.5.r", sep=""),
+StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""), #"code/My shen yoy model 3.5.r"
                           dat, init, n.chains=3, n.adapt=10000) #0
 
 ## concise summary
@@ -98,9 +117,31 @@ out2 <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin)
 summary(out2)
 plot(out1)
 
-
 out1_df<-as.data.frame(as.matrix(out1))
 save(out1_df,file="output/out1_df.rdata")
+
+
+
+
+##with JAAGUI - started at 12:20 pm -
+nc=3;ni=50000; nt=20; nb=10000
+pars <- c("mu","sigmaN2","sigma2.b","g.0",
+          "p.mean","p.b","b.day","b.site") 
+
+library(jagsUI)
+outJUI34 <- jags(
+  data=dat,
+  inits=init,
+  model = paste("code/My shen yoy model 3.5.r", sep=""),
+  parameters.to.save = pars,
+  n.chains=nc,
+  n.iter = ni,
+  n.thin = nt,
+  n.burnin=nb,
+  parallel=T)
+
+summary(outJUI)
+
 
 ## Gelman
 library(coda)

@@ -135,7 +135,6 @@ dev.off()
 summary(Site_Comp[Site_Comp$type=="fish",])
 summary(Site_Comp[Site_Comp$type=="USGS",])
 
-
 #### Basin Characteristics Comparison ####
 
 #PULL sites I'm actually using!
@@ -209,3 +208,23 @@ dev.off()
 
 USGS_BC1
 
+#### All LF covariates ####
+pairs(~log(min7day) + log(totprecip) + log(L1totprecip) + 
+        log(L3totprecip) + log(L4totprecip) + log(L1avgtmax.T),
+      data=fall.WFB, lower.panel = panel.smooth,
+      upper.panel= panel.cor)
+cor(fall.WFB$L1avgtmax.T,fall.WFB$L4avgtmax.T)
+
+#site characteristicx + log(DRAIN_SQMI) + log(LAT_GAGE) + log(LNG_GAGE.T) + 
+
+
+#### 3-D plots ###
+require(akima); library(rworldmap)
+USmap<-getMap(resolution="low")
+d3plot1 <- with(fall.WFB, interp(x= avgtmax , y=totprecip, z=min7day, duplicate="mean"))
+filled.contour(d3plot1, color=rainbow,
+               plot.axes = {
+                 axis(1)
+                 axis(2)
+                 contour(d3plot1, add=T)             
+               })
