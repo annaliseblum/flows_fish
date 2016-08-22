@@ -220,7 +220,6 @@ cor(fall.WFB$L1avgtmax.T,fall.WFB$L4avgtmax.T)
 
 #### 3-D plots ###
 require(akima); library(rworldmap)
-USmap<-getMap(resolution="low")
 d3plot1 <- with(fall.WFB, interp(x= avgtmax , y=totprecip, z=min7day, duplicate="mean"))
 filled.contour(d3plot1, color=rainbow,
                plot.axes = {
@@ -228,3 +227,27 @@ filled.contour(d3plot1, color=rainbow,
                  axis(2)
                  contour(d3plot1, add=T)             
                })
+
+contour(d3plot1)
+points(fall.WFB$avgtmax, fall.WFB$totprecip,add=T) #can't add points easily to filled contour because of the legend
+
+#Mean seasonal flow avgSflow
+d3plot3 <- with(fall.WFB, interp(x= totprecip, y= avgSflow, z=min7day, duplicate="mean"))
+filled.contour(d3plot3, color=rainbow,xlab="total fall precip",ylab="average fall flow",
+               plot.axes = {
+                 axis(1)
+                 axis(2)
+                 contour(d3plot3, add=T)
+                 points(fall.WFB$totprecip, fall.WFB$avgSflow, add=T)
+               })
+
+d3plot2 <- with(fall.WFB, interp(x= Slope_pct , y=log(DRAIN_SQMI), z=min7day, duplicate="mean")) ##DA
+filled.contour(d3plot2, color=rainbow, xlab="Slope",ylab="log Drainage area",
+               plot.axes = {
+                 axis(1)
+                 axis(2)
+                 contour(d3plot2, add=T)             
+               })
+
+
+points(fall.WFB$Slope_pct, fall.WFB$Elev_m,add=T)
