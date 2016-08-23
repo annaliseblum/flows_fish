@@ -69,3 +69,44 @@ names(SDAYMETM3)<-c("site_no","year.f","MinTfall", "MinTspring", "MinTsummer", "
 annual.DAYMET<-merge(SDAYMETM,SDAYMETM2,by=c("site_no","year.f"))
 annual.DAYMET<-merge(annual.DAYMET,SDAYMETM3,by=c("site_no","year.f"))
 save(annual.DAYMET,file="output/annual.DAYMET.rdata")
+
+#### Add monthly Precip, max daily precip and max 3 day precip ####
+MDAYMET <- ddply(DAYMET, .(site_no, year, month), summarize, 
+                 daysperseason=sum(tally),
+                 totprecip = sum(prcp, na.rm = T)
+)
+head(MDAYMET)
+
+##aggregate back to seasonal level, preserving monthly precips
+S_MDAYMET <- dcast(MDAYMET, site_no + year ~ month ,value.var = "totprecip") #need to get wide format
+names(S_MDAYMET)<-c("site_no","year","Pjan", "Pfeb", "Pmar", "Papril", "Pmay", "Pjune", "Pjuly", "Paug", "Psept", "Poct", "Pnov", "Pdec")
+
+#find 3 day total P
+#sort to make sure it's in order
+sDAYMET<-DAYMET[order(DAYMET$site_no,as.Date(DAYMET$Date, format="%Y-%m-%d ")),] #make sure order is correct
+#sDAYMET[1:100,]; tail(sDAYMET) #spot check
+
+#slide data
+sDAYMETS1<-slide(sDAYMET, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL1", slideBy = -1)
+sDAYMETS2<-slide(sDAYMETS1, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF1", slideBy = 1)
+
+#sum 3 days
+sDAYMETS2$P3day<-rowSums(subset(sDAYMETS2, select = c("prcp","prcpL1","prcpF1")), na.rm = TRUE)
+
+#aggregate down to seasonal level, selecting max sum3day precip
+sP3day <- aggregate(sDAYMETS2$P3day,by=list(sDAYMETS2$site_no, sDAYMETS2$year, sDAYMETS2$season),FUN=max) #need to drop years without 365 days of data
+names(sP3day)<-c("site_no","year","season","maxP3day")
+
+##max
+sP1day <- aggregate(DAYMET$prcp,by=list(DAYMET$site_no, DAYMET$year, DAYMET$season),FUN=max) #need to drop years without 365 days of data
+names(sP1day)<-c("site_no","year","season","maxP1day")
+
+### merge these datasets together: S_MDAYMET, sP3day, sP1day
+
+sP13day<-merge(sP3day, sP1day,by=c("site_no","year","season"))
+sum(sP13day$maxP1day> sP13day$maxP3day) #good, no 1 day maxes are higher than 3 day which wouldn't make sense
+
+sPrec<-merge(sP13day,S_MDAYMET,by=c("site_no","year"))
+
+SDAYMET<-merge(SDAYMET,sPrec,by=c("site_no","year","season"))
+save(SDAYMET,file="output/SDAYMET.rdata")

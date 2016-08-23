@@ -35,8 +35,8 @@ names(Usitelist)<-"site_no"; Usitelist$site_no<-as.character(Usitelist$site_no)
 #pull just 29 USGS sites from all 34
 USGS_BC1<-merge(Usitelist,USGS_BC,by="site_no")
 
-## Check distributions of variables; transform ones with negs
-# sum(S.WFB$avgtmax<0)
+# Check distributions of variables; transform ones with negs
+# sum(S.WFB$avgtmax<0) #7
 # head(S.WFB)
 # hist(S.WFB$totprecip) #pretty normal
 # hist(S.WFB$avgtmax) #not so normal

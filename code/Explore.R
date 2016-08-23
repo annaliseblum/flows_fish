@@ -15,7 +15,12 @@ ggplot(data, aes(x=as.factor(year), y=min7day, color=as.factor(siteNDX))) +geom_
        aes(group=as.factor(siteNDX)),se=F) + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
   scale_y_continuous(limits = c(0,100))
 
-#annual LFs occur during which seasons? Aflow works but why doesn't data??
+#annual LFs occur during which seasons? 
+##Collapse to ANNUAL level to get which seasonal min7day is the minimum among the seasons
+aflow <- aggregate(sflow$min7day,by=list(sflow$site_no, sflow$year),FUN=min)
+names(aflow)<-c("site_no","year","min7day")
+Aflow<-merge(aflow,sflow,by=c("site_no","year","min7day"))
+
 pdf("plots/TimingLFs.pdf") #
 ggplot(data=Aflow, aes(x=season, y=min7day))+stat_summary(fun.y=length, geom="bar")+
   labs(x="", y="number of min7day flows in season", title="Timing of Annual 7day minimum flows") 

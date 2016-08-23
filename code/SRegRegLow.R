@@ -175,7 +175,6 @@ fitfall<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+log(totprecip)
 summary(fitfall)
 ResidPlots(fitfall)
 
-
 #### LOO-CV for the gaged sites ####
 S.WFB$sNDX<-as.numeric(as.factor(S.WFB$site_no)) #site index
 site_no<-unique(S.WFB$site_no) #list of sites

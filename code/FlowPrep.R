@@ -52,6 +52,7 @@ df5<-df4S #rename
 #calculate average of 3 days ahead and 3 behind around each date
 
 df5$avg7day<-rowMeans(subset(df5, select = c("cfs","cfsL1","cfsL2","cfsL3","cfsF1","cfsF2","cfsF3")), na.rm = TRUE)
+df5$avg3day<-rowMeans(subset(df5, select = c("cfs","cfsL1","cfsF1")), na.rm = TRUE)
 
 ##Kanno defines seasons as fall=Aug-Nov, winter=dec-feb, spring=march-may, summer=june-aug
 df5$season[df5$month=="12"|df5$month=="01"|df5$month=="02"]<-"winter"
@@ -61,34 +62,76 @@ df5$season[df5$month=="09"|df5$month=="10"|df5$month=="11"]<-"fall"
 
 df5$seasonf<-as.factor(df5$season)
 
-##Collapse to seasonal level to find min7day flow for each season, year and site
-minflow <- aggregate(df5$avg7day,by=list(df5$site_no, df5$year,df5$season),FUN=min)
-names(minflow)<-c("site_no","year","season","min7day")
-summary(minflow$min7day)
+##Collapse to seasonal level to find min7day and min3day flow for each season, year and site
+minflow7 <- aggregate(df5$avg7day,by=list(df5$site_no, df5$year,df5$season),FUN=min)
+names(minflow7)<-c("site_no","year","season","min7day")
+summary(minflow7)
+minflow3 <- aggregate(df5$avg3day,by=list(df5$site_no, df5$year,df5$season),FUN=min)
+names(minflow3)<-c("site_no","year","season","min3day")
+minflow<-merge(minflow, minflow3, by=c("site_no","year","season"))
 
-#define drought - MAKE SURE THIS IS CORRECT
-drought1 <- aggregate(df5$avg7day,by=list(df5$site_no,df5$season),FUN=quantile,probs=0.01)
-names(drought1)<-c("site_no","season","drough.01ps")
-summary(drought1$drough.01ps)
+##Collapse to monthly level to find min7day flow for each season, year and site
+minflowMon7 <- aggregate(df5$avg7day,by=list(df5$site_no, df5$year,df5$month),FUN=min)
+names(minflowMon7)<-c("site_no","year","month","min7day")
+summary(minflowMon7)
+minflowMon3 <- aggregate(df5$avg3day,by=list(df5$site_no, df5$year,df5$month),FUN=min)
+names(minflowMon3)<-c("site_no","year","month","min3day")
+minflowMon<-merge(minflowMon7, minflowMon3, by=c("site_no","year","month"))
 
+##Find how many days flows are below 0.01 percentile within each season
+flow.01p <- aggregate(df5$cfs,by=list(df5$site_no),FUN=quantile,probs=0.01)
+names(flow.01p)<-c("site_no","cfs.01p")
+#merge back into df5 to get number of days in each season with flows below
+df6<-merge(df5,flow.01p,by="site_no")
+df6$below.01p<-ifelse(df6$cfs.01p>=df6$cfs,1,0)
+
+# #test to make sure it makes sense
+# agg1 <- aggregate(df6$below.01p,by=list(df5$site_no),FUN=sum) #
+# agg2 <- aggregate(df6$below.01p,by=list(df5$site_no),FUN=length) #,df5$month
+# cbind(agg1,agg2$x*.01)
+
+Sdays.01 <- aggregate(df6$below.01p,by=list(df5$site_no,df5$year,df5$season),FUN=sum) #
+names(Sdays.01)<-c("site_no","year","season","days.01p")
+  
 #merge drought and min flow
-lowflow<-merge(drought1,minflow,by=c("site_no","season"))
-sum(lowflow$drough.01ps>lowflow$min7day) #40% of seasons have a "flood"
-lowflow$drought<-ifelse(lowflow$drough.01ps>lowflow$min7day,1,0) #13.6% of seasons have a "drought"
+lowflow<-merge(Sdays.01,minflow,by=c("site_no","year","season"))
 
-#define flood - MAKE SURE THIS IS CORRECT
-flood1 <- aggregate(df5$cfs,by=list(df5$site_no,df5$season),FUN=quantile,probs=.99) #100 year flood?"
-names(flood1)<-c("site_no","season","flood.99ps")
-summary(flood1$flood.99ps)
+####HIGH FLOWS
+#1 day max
+maxflow1 <- aggregate(df5$cfs,by=list(df5$site_no, df5$year,df5$season),FUN=max)
+names(maxflow1)<-c("site_no","year","season","maxdayflow")
+summary(maxflow1$maxdayflow)
 
-maxflow <- aggregate(df5$cfs,by=list(df5$site_no, df5$year,df5$season),FUN=max)
-names(maxflow)<-c("site_no","year","season","maxdayflow")
-summary(maxflow$maxdayflow)
+#3 day max
+maxflow3 <- aggregate(df5$avg3day,by=list(df5$site_no, df5$year,df5$season),FUN=max)
+names(maxflow3)<-c("site_no","year","season","max3dayflow")
+summary(maxflow3$max3dayflow)
 
-#merge flood1 and max flow
-highflow<-merge(flood1,maxflow,by=c("site_no","season"))
-sum(highflow$flood.99ps<highflow$maxdayflow) #40% of seasons have a "flood"
-highflow$flood<-ifelse(highflow$flood.99ps<highflow$maxdayflow,1,0) #40% of seasons have a "flood"
+#merge these
+maxflow<-merge(maxflow1,maxflow3,by=c("site_no","year","season"))
+
+# #check: all max 1 day flow must be higher than max 3 day
+# check1 <- aggregate(maxflow$maxdayflow,by=list(maxflow$site_no),FUN=max)
+# check2 <- aggregate(maxflow$max3dayflow,by=list(maxflow$site_no),FUN=max)
+# sum(check1$x<check2$x) #0, good
+
+#number of days above 98%ile
+flow.98p <- aggregate(df5$cfs,by=list(df5$site_no),FUN=quantile,probs=0.98)
+names(flow.98p)<-c("site_no","cfs.98p")
+#merge back into df5 to get number of days in each season with flows below
+df7<-merge(df5,flow.98p,by="site_no")
+df7$above.98p<-ifelse(df7$cfs.98p<df6$cfs,1,0)
+
+# #test to make sure it makes sense - matches even better than with low flows
+# agg3 <- aggregate(df7$above.98p,by=list(df5$site_no),FUN=sum) #
+# agg4 <- aggregate(df7$above.98p,by=list(df5$site_no),FUN=length) #,df5$month
+# cbind(agg3,agg4$x*.02)
+
+Sdays.98 <- aggregate(df7$cfs.98p,by=list(df5$site_no,df5$year,df5$season),FUN=sum) #
+names(Sdays.98)<-c("site_no","year","season","days.98p")
+
+#merge Sdays.98 and max flow
+highflow<-merge(Sdays.98,maxflow,by=c("site_no","year","season"))
 
 ##Average seasonal flow
 avgflow <- aggregate(df5$cfs,by=list(df5$site_no, df5$year,df5$season),FUN=mean)
@@ -107,31 +150,7 @@ sdata$year.f <- ifelse(sdata$season=="winter"|sdata$season=="spring", sdata$year
 sflow<-sdata
 save(sflow,file="output/sflow.rdata")
 
-##collapse by year and season across sites
-avgFlowSites <- ddply(sflow, .(year.f,season), summarize, 
-                  Avgdrought=mean(drought),
-                  Avgflood=mean(flood)
-                  #, avgSflow=mean(avgSflow) #need to make this per DA at the least
-)
-
-droughtS <- dcast(avgFlowSites, year.f ~ season,value.var = "Avgdrought")
-names(droughtS)<-c("year.f","Drfall", "Drspring", "Drsummer", "Drwinter")
-
-FloodS <- dcast(avgFlowSites, year.f ~ season,value.var = "Avgflood")
-names(FloodS)<-c("year.f","Flfall", "Flspring", "Flsummer", "Flwinter")
-
-Extremes<-merge(droughtS,FloodS,by="year.f")
-
-##look at weather before floods and droughts to understand relationship at these sites
-
-
-##Collapse to ANNUAL level to get which seasonal min7day is the minimum among the seasons
-aflow <- aggregate(sflow$min7day,by=list(sflow$site_no, sflow$year),FUN=min)
-names(aflow)<-c("site_no","year","min7day")
-Aflow<-merge(aflow,sflow,by=c("site_no","year","min7day"))
-
-
-#### UVA flow data prep
+#### UVA flow data prep ####
 UVAstreamsSC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
 UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
 
