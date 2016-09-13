@@ -89,7 +89,7 @@ fishSC2$DA_SQMI<-fishSC2$WatershedArea_ha/258.999
 #merge
 fishSC<-merge(fishSC2,fishSC1,by="SiteID")
 
-fishSC<-fishSC[c("SiteID","DA_SQMI","HUC8","Lat_n83","Lon_n83","REACH_CODE",
+fishSC<-fishSC[c("SiteID","DA_SQMI","HUC8","LAT_GAGE","LNG_GAGE","REACH_CODE",
                    "Slope_deg","Aspect_deg", "Elev_m")]
 names(fishSC)<-c("site_no","DRAIN_SQMI","HUC8","LAT_GAGE","LNG_GAGE","REACH_CODE",
                   "Slope_pct","Aspect_deg","Elev_m")

@@ -26,7 +26,7 @@ USGS_BC<-USGS_BC[c("site_no","DRAIN_SQMI","HUC02","LAT_GAGE","LNG_GAGE","REACHCO
 names(USGS_BC)<-c("site_no","DRAIN_SQMI","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE",
                   "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET","ELEV_MEAN_M_BASIN")
 
-S.WF<-merge(SDAYMET,sflow,by=c("site_no","year","season"))
+S.WF<-merge(aDAYMET,sflow,by=c("site_no","year"))
 S.WFB<-merge(S.WF,USGS_BC,by=c("site_no"))
 
 #USGS
@@ -45,33 +45,41 @@ USGS_BC1<-merge(Usitelist,USGS_BC,by="site_no")
 # summary(S.WFB$min7day)
 # sum(S.WFB$min7day==0) #7 of zero...
 # sort(S.WFB$min7day[S.WF$min7day<.05]) #next lowest is 0.004 some how? should be .01
+# summary(S.WFB$min3day)
+# sum(S.WFB$min3day==0) #8 of zero...
 
 #replace zeros in LFs
 S.WFB$min7day[S.WFB$min7day==0]<- .005 #add .005 to the zeros so i can log
+S.WFB$min3day[S.WFB$min3day==0]<- .005 #add .005 to the zeros so i can log
+
 #hist(log(S.WFB$min7day)) #looks better!
 
 #transform ones with negs
 #summary(S.WFB) #check for negatives: avgtmax, avgtmin,LNG_GAGE
 
 S.WFB$avgtmax.T<- S.WFB$avgtmax+3
-S.WFB$L1avgtmax.T<- S.WFB$L1avgtmax+3
-S.WFB$L2avgtmax.T<- S.WFB$L2avgtmax+3
-S.WFB$L3avgtmax.T<- S.WFB$L3avgtmax+3
-S.WFB$L4avgtmax.T<- S.WFB$L4avgtmax+3
+# S.WFB$L1avgtmax.T<- S.WFB$L1avgtmax+3
+# S.WFB$L2avgtmax.T<- S.WFB$L2avgtmax+3
+# S.WFB$L3avgtmax.T<- S.WFB$L3avgtmax+3
+# S.WFB$L4avgtmax.T<- S.WFB$L4avgtmax+3
 
 #S.WFB$avgtmin.T<- S.WFB$avgtmin+10
 S.WFB$LNG_GAGE.T<- S.WFB$LNG_GAGE+100
 summary(S.WFB)
 
+#replace zeros in march and october precip
+S.WFB$Pmar[S.WFB$Pmar==0]<- .5 #add .5 to the zeros so i can log
+S.WFB$Poct[S.WFB$Poct==0]<- .5 #add .5 to the zeros so i can log
+
 save(S.WFB,file="output/S.WFB.rdata")
 
 #get merged data set at annual level for plotting
 #need to reshape sflow data to be annual
-aflow <- dcast(sflow, site_no + year.f ~ season,value.var = "min7day") #need to get wide format
-names(aflow)<-c("site_no","year.f","LFfall", "LFspring", "LFsummer", "LFwinter")
+annual7minflow <- dcast(sflow, site_no + year.f ~ season,value.var = "min7day") #need to get wide format
+names(annual7minflow)<-c("site_no","year.f","LFfall", "LFspring", "LFsummer", "LFwinter")
 
 #merge at year and site
-A.Flows<-merge(annual.DAYMET,aflow,by=c("site_no","year.f"))
+A.Flows<-merge(annual.DAYMET,annual7minflow,by=c("site_no","year.f"))
 str(A.Flows)
 summary(A.Flows) #lose the 2011s in DAYMET because no fish data for then...
 length(unique(A.Flows$site_no)) #45

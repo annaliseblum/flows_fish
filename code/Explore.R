@@ -143,13 +143,13 @@ summary(Site_Comp[Site_Comp$type=="USGS",])
 #### Basin Characteristics Comparison ####
 
 #PULL sites I'm actually using!
-
+load("output/fishSC.rdata")
 #combine fish and USGS site characteristics to make boxplot comparisons
 names(USGS_BC1)
 names(fishSC1)
 
 Sites_U<-USGS_BC1[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
-Sites_F<-fishSC1[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
+Sites_F<-fishSC[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
 
 Sites_U$type<-"USGS"
 Sites_F$type<-"fish"

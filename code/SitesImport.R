@@ -1,5 +1,5 @@
 ##sites
-##July 5, 2016
+##Created: July 5, 2016 Updated: Spet 2,2016
 ##Annalise Blum annaliseblum@gmail.com
 
 library(stringr)
@@ -74,7 +74,6 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
 UVAstreamsSC <- ("data/UVAstreamsites.csv") #import site characteristics
 UVA_Discharge <- ("data/SWAS_data.csv") #import discharge data
-
 
 #### For Kyle - Pull Lat and Longs of the selected sites ####
 

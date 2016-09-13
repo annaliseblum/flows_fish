@@ -1,10 +1,23 @@
 ##Weather prep
 
-DAYMET <- read.csv("data/daymetRecord.csv") #6 variables ,colClasses=c("character",rep("numeric",5))
-str(DAYMET) ; head(DAYMET)
+DAYMET1 <- read.csv("data/daymetRecord.csv") #6 variables ,colClasses=c("character",rep("numeric",5))
+str(DAYMET1) ; head(DAYMET1)
+
+DAYMET2 <- read.csv("data/DaymetAGBSites.csv") #This one has 4 additional variables (daylight, radiation, vp and swe)
+str(DAYMET2) ; head(DAYMET2)
+DAYMET2s<-DAYMET2[c("site_no", "featureid","date","tmax","tmin", "prcp")]
+str(DAYMET2s) ; head(DAYMET2s)
+
+#combine datasets
+names(DAYMET1); names(DAYMET2s); #match, good
+DAYMET<-rbind(DAYMET1,DAYMET2s)
+unique(DAYMET$site_no)
+
+#prep variables
 DAYMET$Date<-as.Date(DAYMET$date, "%Y-%m-%d")
 DAYMET$site_no<-as.character(DAYMET$site_no)
-unique(DAYMET$site_no)
+
+
 
 DAYMET$month<-format(DAYMET$Date, "%m") #extract month variable 
 DAYMET$year<-format(DAYMET$Date, "%Y") #extract year variable 
@@ -56,20 +69,6 @@ SDAYMET$year.f <- ifelse(SDAYMET$season=="winter"|SDAYMET$season=="spring", SDAY
 
 save(SDAYMET,file="output/SDAYMET.rdata")
 
-#get weather on annual level to match fish data
-SDAYMETM <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "totprecip") #need to get wide format
-names(SDAYMETM)<-c("site_no","year.f","Pfall", "Pspring", "Psummer", "Pwinter")
-
-SDAYMETM2 <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "avgtmax") #need to get wide format
-names(SDAYMETM2)<-c("site_no","year.f","MaxTfall", "MaxTspring", "MaxTsummer", "MaxTwinter")
-
-SDAYMETM3 <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "avgtmin") #need to get wide format
-names(SDAYMETM3)<-c("site_no","year.f","MinTfall", "MinTspring", "MinTsummer", "MinTwinter")
-
-annual.DAYMET<-merge(SDAYMETM,SDAYMETM2,by=c("site_no","year.f"))
-annual.DAYMET<-merge(annual.DAYMET,SDAYMETM3,by=c("site_no","year.f"))
-save(annual.DAYMET,file="output/annual.DAYMET.rdata")
-
 #### Add monthly Precip, max daily precip and max 3 day precip ####
 MDAYMET <- ddply(DAYMET, .(site_no, year, month), summarize, 
                  daysperseason=sum(tally),
@@ -78,8 +77,8 @@ MDAYMET <- ddply(DAYMET, .(site_no, year, month), summarize,
 head(MDAYMET)
 
 ##aggregate back to seasonal level, preserving monthly precips
-S_MDAYMET <- dcast(MDAYMET, site_no + year ~ month ,value.var = "totprecip") #need to get wide format
-names(S_MDAYMET)<-c("site_no","year","Pjan", "Pfeb", "Pmar", "Papril", "Pmay", "Pjune", "Pjuly", "Paug", "Psept", "Poct", "Pnov", "Pdec")
+w_MDAYMET <- dcast(MDAYMET, site_no + year ~ month ,value.var = "totprecip") #need to get wide format
+names(w_MDAYMET)<-c("site_no","year","Pjan", "Pfeb", "Pmar", "Papril", "Pmay", "Pjune", "Pjuly", "Paug", "Psept", "Poct", "Pnov", "Pdec")
 
 #find 3 day total P
 #sort to make sure it's in order
@@ -106,7 +105,46 @@ names(sP1day)<-c("site_no","year","season","maxP1day")
 sP13day<-merge(sP3day, sP1day,by=c("site_no","year","season"))
 sum(sP13day$maxP1day> sP13day$maxP3day) #good, no 1 day maxes are higher than 3 day which wouldn't make sense
 
-sPrec<-merge(sP13day,S_MDAYMET,by=c("site_no","year"))
+sPrec<-merge(sP13day,w_MDAYMET,by=c("site_no","year"))
 
 SDAYMET<-merge(SDAYMET,sPrec,by=c("site_no","year","season"))
 save(SDAYMET,file="output/SDAYMET.rdata")
+
+#### ANNUAL for FLOW PREDICTIONS#### 
+fSDAYMETM <- dcast(SDAYMET, site_no + year ~ season,value.var = "totprecip") #need to get wide format
+names(fSDAYMETM)<-c("site_no","year","Pfall", "Pspring", "Psummer", "Pwinter")
+
+fSDAYMETM2 <- dcast(SDAYMET, site_no + year ~ season,value.var = "avgtmax") #need to get wide format
+names(fSDAYMETM2)<-c("site_no","year","MaxTfall", "MaxTspring", "MaxTsummer", "MaxTwinter")
+
+fSDAYMETM3 <- dcast(SDAYMET, site_no + year ~ season,value.var = "avgtmin") #need to get wide format
+names(fSDAYMETM3)<-c("site_no","year","MinTfall", "MinTspring", "MinTsummer", "MinTwinter")
+
+sP3day_w <- dcast(sP13day, site_no + year ~ season,value.var = "maxP3day") #need to get wide format
+names(sP3day_w)<-c("site_no","year","maxP3fall", "maxP3spring", "maxP3summer", "maxP3winter")
+
+sP1day_w <- dcast(sP13day, site_no + year ~ season,value.var = "maxP1day") #need to get wide format
+names(sP1day_w)<-c("site_no","year","maxP1fall", "maxP1spring", "maxP1summer", "maxP1winter")
+
+aDAYMET<-merge(fSDAYMETM,fSDAYMETM2,by=c("site_no","year"))
+aDAYMET<-merge(aDAYMET,fSDAYMETM3,by=c("site_no","year"))
+aDAYMET<-merge(aDAYMET,w_MDAYMET,by=c("site_no","year"))
+aDAYMET<-merge(aDAYMET,sP3day_w,by=c("site_no","year"))
+aDAYMET<-merge(aDAYMET,sP1day_w,by=c("site_no","year"))
+
+save(aDAYMET,file="output/aDAYMET.rdata")
+
+#### ANNUAL get weather on annual level to match fish data #### 
+SDAYMETM <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "totprecip") #need to get wide format
+names(SDAYMETM)<-c("site_no","year.f","Pfall", "Pspring", "Psummer", "Pwinter")
+
+SDAYMETM2 <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "avgtmax") #need to get wide format
+names(SDAYMETM2)<-c("site_no","year.f","MaxTfall", "MaxTspring", "MaxTsummer", "MaxTwinter")
+
+SDAYMETM3 <- dcast(SDAYMET, site_no + year.f ~ season,value.var = "avgtmin") #need to get wide format
+names(SDAYMETM3)<-c("site_no","year.f","MinTfall", "MinTspring", "MinTsummer", "MinTwinter")
+
+annual.DAYMET<-merge(SDAYMETM,SDAYMETM2,by=c("site_no","year.f"))
+annual.DAYMET<-merge(annual.DAYMET,SDAYMETM3,by=c("site_no","year.f"))
+annual.DAYMET1<-merge(annual.DAYMET,w_MDAYMET,by=c("site_no","year.f"))
+save(annual.DAYMET,file="output/annual.DAYMET.rdata")

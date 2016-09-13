@@ -97,6 +97,69 @@ abline(0,0)
 sum(AbuPFlows400$residuals>0)/length(AbuPFlows400$residuals)
 sum(AbuPFlows400$residuals<0)/length(AbuPFlows400$residuals)
 
+#### 3 - randomly drop 10 % of data CV #### 
+#only have nrow(AbuPFlows) = 411
+#Abu_predsGLM<-rep(NA, length=nrow(AbuPFlows))
+
+#how many sites to drop?
+n.drop<-round(nrow(AbuPFlows)*.1)
+
+#find RMSE without dropping any data
+#4 run model
+All_mod5<- lm(EstYOYAbu ~fallPmin7day+ winterTempStd+springTempStd
+                ,data=AbuPFlows) #try with non-rounded
+
+#summary(All_mod5)
+#5 - Predict annual 7day min flows based on the 3 models and save
+Abu_predsALL<-predict(All_mod5,RanAbuPFlows ,allow.new.levels = T) #testData
+AbuPFlows$Abu_predsALL<-Abu_predsALL
+
+#4 find RMSE
+RMSE<-(mean((AbuPFlows$EstYOYAbu- AbuPFlows$Abu_predsALL)^2))^.5
+RMSE
+
+#1 - Randomly shuffle the data
+RanAbuPFlows<-AbuPFlows[sample(nrow(AbuPFlows)),]
+
+#2 - Create variable for omit the first 10% of randomly shuffled data
+RanAbuPFlows$omit<-0
+RanAbuPFlows$omit[1:n.drop]<-1
+
+#3 - Build test and training data sets
+testData <- RanAbuPFlows[RanAbuPFlows$omit==1, ] #41 randomly-selected sites
+trainData <- RanAbuPFlows[RanAbuPFlows$omit==0, ] #the rest of the data
+
+#4 run model
+Train_mod5<- lm(EstYOYAbu ~fallPmin7day+ winterTempStd+springTempStd
+                ,data=trainData) #try with non-rounded
+
+summary(Train_mod5)
+#5 - Predict annual 7day min flows based on the 3 models and save
+Abu_preds<-predict(Train_mod5,RanAbuPFlows ,allow.new.levels = T) #testData
+RanAbuPFlows$Abu_preds2<-Abu_preds
+
+#4 find RMSE
+RMSE<-(mean((RanAbuPFlows$EstYOYAbu- RanAbuPFlows$Abu_preds2)^2))^.5
+RMSE
+
+###from other section
+#reshape preds to match dataset
+Abu_predsVector<-melt(Abu_preds)
+AbuPFlows400$Kfold40Preds<-Abu_predsVector$value
+
+#plot obs vs predicted
+plot(AbuPFlows400$RYOYAbu,AbuPFlows400$Kfold40Pred)
+abline(0,1)
+
+#plot residuals: resids<-obs-predicted
+AbuPFlows400$residuals<-AbuPFlows400$RYOYAbu-AbuPFlows400$Kfold40Pred
+plot(AbuPFlows400$Kfold40Pred,AbuPFlows400$residuals)
+abline(0,0)
+
+#how many are >0 ?
+sum(AbuPFlows400$residuals>0)/length(AbuPFlows400$residuals)
+sum(AbuPFlows400$residuals<0)/length(AbuPFlows400$residuals)
+
 ##### CV EXAMPLES: #####
 #http://stats.stackexchange.com/questions/61090/how-to-split-a-data-set-to-do-10-fold-cross-validation
 

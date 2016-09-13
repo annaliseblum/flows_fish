@@ -1,13 +1,96 @@
 ##Regional regression model to predict seasonal LFs
 ##Annalise Blum
-##July 18,2016
+##Created: July 18,2016
+##Modified last: August 23,2016
 
 library(lme4); library(MASS);library(hydroGOF)
 
 #load cleaned data
-load("output/S.WFB.rdata")
+load("output/S.WFB.rdata") ##deal with year.f.x and year.f.y sum(SuFa.WFB$year.f.y-SuFa.WFB$year.f.x) they are the same
 
 S.WFB<-S.WFB[complete.cases(S.WFB),]
+
+####Model Selection####
+#Just focusing on LFs in summer and fall
+SuFa.WFB<-S.WFB[S.WFB$season=="summer"|S.WFB$season=="fall",]
+summary(SuFa.WFB)
+
+#possible variables:
+# > names(S.WFB)
+# [1] "site_no"           "year"              "Pfall"             "Pspring"           "Psummer"           "Pwinter"           "MaxTfall"         
+# [8] "MaxTspring"        "MaxTsummer"        "MaxTwinter"        "MinTfall"          "MinTspring"        "MinTsummer"        "MinTwinter"       
+# [15] "Pjan"              "Pfeb"              "Pmar"              "Papril"            "Pmay"              "Pjune"             "Pjuly"            
+# [22] "Paug"              "Psept"             "Poct"              "Pnov"              "Pdec"              "maxP3fall"         "maxP3spring"      
+# [29] "maxP3summer"       "maxP3winter"       "maxP1fall"         "maxP1spring"       "maxP1summer"       "maxP1winter"       "season"           
+# [36] "avgSflow"          "days.01p"          "min7day"           "min3day"           "days.98p"          "maxdayflow"        "max3dayflow"      
+# [43] "year.f"            "DRAIN_SQMI"        "HUC02"             "LAT_GAGE"          "LNG_GAGE"          "REACH_CODE"        "Slope_pct"        
+# [50] "Aspect_deg"        "Elev_m"            "BFI_AVE"           "TOPWET"            "ELEV_MEAN_M_BASIN" "LNG_GAGE.T"     
+
+#combined summer and fall, which vars are useful? start with seasonal P and T and lags
+SDLF1<-lm(log(min7day)~log(Pfall+Psummer)+log(MaxTsummer)+log(MaxTfall)+
+           log(Pwinter)+log(Pspring)+log(MaxTwinter)+log(MaxTspring)+
+           log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+log(Elev_m)
+           , data=SuFa.WFB)
+summary(SDLF1)
+ResidPlots(SDLF1) #lots of auto correlation, not normal with small resids
+
+#remove non-sig vars: any temps,spring precip aspect degree; and try by summer and fall seperately
+SDLF2<-lm(log(min7day)~log(Pfall)+log(Psummer)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m)
+             , data=SuFa.WFB[SuFa.WFB$season=="summer",])
+summary(SDLF2)
+ResidPlots(SDLF2)
+
+##good! fall precip doesn't explain previous summer flow at all
+
+#try adding the variables I don't have for fish sites just to see how helpful they are: BFI increased adjR2 from .75 to .79 +log(TOPWET)
+SDLF3<-lm(log(min7day)~log(Pfall)+log(Psummer)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) + log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="summer",])
+summary(SDLF3)
+ResidPlots(SDLF3)
+
+##try individual months P
+SDLFs<-lm(log(min7day)~log(Pmay)+log(Pjune)+log(Pjuly)+log(Paug)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) #+ log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="summer",])
+summary(SDLFs)
+ResidPlots(SDLFs)
+
+SDLFf<-lm(log(min7day)~log(Pmay)+log(Pjune)+log(Pjuly)+log(Paug)+log(Psept)+log(Poct)+log(Pnov)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) #+ log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="fall",])
+summary(SDLFf)
+ResidPlots(SDLFf)
+#may and october P don't matter - maybe because there is so little precip in Oct??
+
+##How well do these models work for 3day mins?
+TDLFs<-lm(log(min3day)~log(Pmay)+log(Pjune)+log(Pjuly)+log(Paug)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) # + log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="summer",])
+summary(TDLFs)
+ResidPlots(TDLFs)
+
+TDLFf<-lm(log(min3day)~log(Pjune)+log(Pjuly)+log(Paug)+log(Psept)+log(Poct)+log(Pnov)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) # + log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="fall",])
+summary(TDLFf)
+ResidPlots(TDLFf)
+
+##How well do these models work for number of days below - something wrong with days.98p variable!!
+TDLFs<-lm(log(XXXX)~log(Pmay)+log(Pjune)+log(Pjuly)+log(Paug)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) #+ log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="summer",])
+summary(TDLFs)
+ResidPlots(TDLFs)
+
+TDLFf<-lm(log(XXXX)~log(Pjune)+log(Pjuly)+log(Paug)+log(Psept)+log(Poct)+log(Pnov)+
+            log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) #+ log(BFI_AVE)
+          ,data=SuFa.WFB[SuFa.WFB$season=="fall",])
+summary(TDLFf)
+ResidPlots(TDLFf)
+
+####OLD ###
 
 ####Model selection - all, then stepwise - Pooled model ####
 #Kanno used average max T, I find min to increase adjR2 by 0.0073
@@ -224,23 +307,3 @@ for (i in 1:length(fishSC1$DRAIN_SQMI)){
 }
 
 USGS_BC1[USGS_BC1$meLNSE< -1,]
-
-#### Predict at fish sites ####
-FishPredRR<-exp(predict(fitF,S.WFC,allow.new.levels = T)) #get correct fish data
-names(S.WFC)
-S.WFC$RRpreds<-FishPredRR
-
-#collapse to annual level and merge in fish sample data ##Error in eval(expr, envir, enclos) : object 'year.f' not found ##HERE START
-RRA.WFC <- dcast(S.WFC, site_no + year.f ~ season,value.var = "RRpreds") #need to get wide format
-head(RRA.WFC)
-names(RRA.WFC)<-c("site_no","year.f","RRpredsfall", "RRpredsspring", "RRpredssummer", "RRpredswinter")
-
-#merge in with main data set
-class(A.FWC$site_no);class(RRA.WFC$site_no)
-class(A.FWC$year.f);class(RRA.WFC$year.f)
-names(A.FWC)
-
-A.FWC_RR<-merge(A.FWC,RRA.WFC,by=c("site_no","year.f"))
-
-save(A.FWC_RR,file="output/A.FWC_RR.rdata")
-
