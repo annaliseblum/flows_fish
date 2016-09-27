@@ -101,22 +101,24 @@ sum(AbuPFlows400$residuals<0)/length(AbuPFlows400$residuals)
 #only have nrow(AbuPFlows) = 411
 #Abu_predsGLM<-rep(NA, length=nrow(AbuPFlows))
 
+#figure out why RanAbuPFlows has lower RSME than AbuPFlows #####START HERE
+
 #how many sites to drop?
 n.drop<-round(nrow(AbuPFlows)*.1)
 
 #find RMSE without dropping any data
 #4 run model
 All_mod5<- lm(EstYOYAbu ~fallPmin7day+ winterTempStd+springTempStd
-                ,data=AbuPFlows) #try with non-rounded
+                ,data=RanAbuPFlows) #try with non-rounded
 
 #summary(All_mod5)
 #5 - Predict annual 7day min flows based on the 3 models and save
 Abu_predsALL<-predict(All_mod5,RanAbuPFlows ,allow.new.levels = T) #testData
-AbuPFlows$Abu_predsALL<-Abu_predsALL
+RanAbuPFlows$Abu_predsALL<-Abu_predsALL
 
 #4 find RMSE
-RMSE<-(mean((AbuPFlows$EstYOYAbu- AbuPFlows$Abu_predsALL)^2))^.5
-RMSE
+RMSEall<-(mean((RanAbuPFlows$EstYOYAbu- RanAbuPFlows$Abu_predsALL)^2))^.5
+RMSEall
 
 #1 - Randomly shuffle the data
 RanAbuPFlows<-AbuPFlows[sample(nrow(AbuPFlows)),]

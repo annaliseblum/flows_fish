@@ -1,6 +1,7 @@
 ##sites
-##Created: July 5, 2016 Updated: Spet 2,2016
+##Created: July 5, 2016 Updated: Sept 27,2016
 ##Annalise Blum annaliseblum@gmail.com
+#rm(list=ls())
 
 library(stringr)
 library("dataRetrieval") #to pull data from USGS site
