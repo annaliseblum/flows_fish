@@ -3,8 +3,7 @@
 ##annalise Blum
 library(reshape)
 
-#extract the fish sites I'm looking at (34 of them) and years 1994-2010
-load("~/flows_fish/YK/countArray 115 sites.rdata")
+
 
 #sort out structure of this multi-dimensional array
 dim(countAr) #115 sites X 29 years X 2 agets X 3 passes

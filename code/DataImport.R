@@ -60,13 +60,21 @@ USGS_BC<-merge(SitesHUC2,GAGESII_HydroC,by="site_no")
 USGS_BC<-merge(USGS_BC,GAGESII_TopoC)
 save(USGS_BC,file="output/USGS_BC.rdata")
 
-####4 - Import fish site info from Kanno et al sites####
+####4 - Import fish data and site info from Kanno et al sites####
+
+#sites
 fishsiteDf <- read.csv("YK/siteDf.csv")
 save(fishsiteDf,file="output/fishsiteDf.rdata")
 names(fishsiteDf)
 fishsiteDf
 fishsiteDf$Lat_n83<-as.numeric(fishsiteDf$Lat_n83)
 fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
+
+#data
+#load array with fish data from kanno folder
+load("~/flows_fish/YK/countArray 115 sites.rdata")
+save(countAr,file="output/countAr.rdata")
+
 
 ####5 - Import UVA site info ####
 UVAstreamsSC <- ("data/UVAstreamsites.csv") #import site characteristics
