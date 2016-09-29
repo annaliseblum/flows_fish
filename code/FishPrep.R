@@ -1,14 +1,14 @@
 ##fish data prep
-##July 18, 2016
-##annalise Blum
+###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
+### Annalise G Blum
+##Created:July 18, 2016, last modified: Sept 28,2016
+
 library(reshape)
-
-
 
 #sort out structure of this multi-dimensional array
 dim(countAr) #115 sites X 29 years X 2 agets X 3 passes
 
-# #extract YOY to get down to 3 dimensional array
+#extract YOY to get down to 3 dimensional array
 YOYcountAr<-countAr[,,1,]
 dim(YOYcountAr)
 dimnames(countAr)
@@ -30,24 +30,24 @@ sum(YOYcountAr[,,1]==0,na.rm=T)
 #replace 0s with NA because they are times no data was collected
 YOYcountSum[YOYcountSum == 0] <- NA
 
-#detection rate is 0.569
+#detection rate is 0.569 based on results of Kanno et al model analysis
 YOY_Abun<-as.data.frame(YOYcountSum/0.569)
 
 #create site number and remove leading "F_"
 rownames(YOY_Abun)
 YOY_Abun$site_no<-substr(rownames(YOY_Abun),3,9)
 
+#melt into long format
+fish_YAbu<-melt.data.frame(YOY_Abun,id.vars="site_no")
+names(fish_YAbu)<-c("site_no","year","EstYOYAbu")
+save(fish_YAbu,file="output/fish_YAbu.rdata")
+
+#### Old - subset of years and just first pass) ####
 ##pull out the 34 sites for prelim analysis; Fish_sites1 is the list of 34 sites
 matches<-match(YOY_Abun$site_no, fishSites34, nomatch=0)
 site.pos<-which(matches>0)
 YOY_Abun34<-YOY_Abun[site.pos,]
 
-#melt into long format
-fish_YAbu34<-melt.data.frame(YOY_Abun34,id.vars="site_no")
-names(fish_YAbu34)<-c("site_no","year","EstYOYAbu")
-save(fish_YAbu34,file="output/fish_YAbu34.rdata")
-
-#### Old - subset of years and just first pass) ####
 #extract years 1994-2010
 #countArS<-countAr[,13:29,,]
 

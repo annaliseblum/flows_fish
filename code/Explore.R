@@ -7,6 +7,16 @@ load("output/USGS_BC.rdata")#USGS gages Basin Chars
 load("output/fishSC.rdata") #all the site characteristics available
 
 #### Flows plots ####
+
+##Correlation in flow metrics
+library(corrgram)
+pdf("plots/Flow_correlation.pdf")
+corrgram(sflow[,8:15], order=TRUE, lower.panel=panel.cor,
+         upper.panel=panel.pts, text.panel=panel.txt,
+         diag.panel=panel.minmax,
+         main="Correlation of seaonal flow metrics, 45 USGS sites (n=2488)")
+dev.off()
+
 data<-S.WFB #A.FW
 data$siteNDX<-as.numeric(as.factor(data$site_no))
 
@@ -146,7 +156,7 @@ summary(Site_Comp[Site_Comp$type=="USGS",])
 load("output/fishSC.rdata")
 #combine fish and USGS site characteristics to make boxplot comparisons
 names(USGS_BC1)
-names(fishSC1)
+names(fishSC)
 
 Sites_U<-USGS_BC1[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
 Sites_F<-fishSC[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]

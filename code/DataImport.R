@@ -1,6 +1,15 @@
-##sites
-##Created: July 5, 2016 Updated: Sept 27,2016
+##Import Raw Data and save as r data sets for fish and extreme flows project
+##Created: July 5, 2016 Updated: Sept 28,2016
 ##Annalise Blum annaliseblum@gmail.com
+
+#data sets created in this file:
+# 2 load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
+# 3 load("output/USGS_BC.rdata") #basin characteristics from GAGESII
+# 4 load("output/fishsiteDf.rdata") #fish site characteristics from Kanno et al (2016)
+# 4 load("output/countAr.rdata") #fish DATA array from Kanno et al (2016)
+# 5 load("output/UVAstreamsSC.rdata") #UVA sites characteristics
+# 5 load("output/UVA_Discharge.rdata") #UVA flow data
+
 #rm(list=ls())
 
 library(stringr)
@@ -32,13 +41,13 @@ SitesHUC2$LAT_GAGE<-as.numeric(SitesHUC2$LAT_GAGE)
 SitesHUC2$LNG_GAGE<-as.numeric(SitesHUC2$LNG_GAGE)
 
 ####2 - Import streamflow data from USGS NWIS ####
-Sites<-unique(SitesHUC2$site_no)
-parameterCd<-"00060" #set the parameter of interest at cfs
-#rawDailyData<-readNWISdv(Sites,parameterCd, startDate = "1994-01-01", endDate = "2010-12-31") #statCd = "00003 defaults
-save(rawDailyData, file="data/rawDailyData.rdata")
+# Sites<-unique(SitesHUC2$site_no)
+# parameterCd<-"00060" #set the parameter of interest at cfs
+# rawDailyData<-readNWISdv(Sites,parameterCd, startDate = "1982-01-01", endDate = "2010-12-31") #statCd = "00003 defaults
+# save(rawDailyData, file="data/rawDailyData.rdata")
 
 load("data/rawDailyData.rdata")
-length(unique(rawDailyData$site_no)) #there are 47 sites with flow data from these days (from the 53 originally)
+length(unique(rawDailyData$site_no)) #there are 49 sites with flow data from these days (from the 53 originally)
 
 ####3 - USGS sites basin characteristics from GAGESII ####
 GAGESII_Hydro <- read.csv("data/GAGESII_Hydro.csv",colClasses=c("character",rep("numeric",33))) #fix classes
@@ -74,7 +83,6 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 #load array with fish data from kanno folder
 load("~/flows_fish/YK/countArray 115 sites.rdata")
 save(countAr,file="output/countAr.rdata")
-
 
 ####5 - Import UVA site info ####
 UVAstreamsSC <- ("data/UVAstreamsites.csv") #import site characteristics

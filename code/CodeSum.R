@@ -17,3 +17,5 @@ load("output/UVA_Discharge.rdata") #UVA flow data
 source(file="code/FlowPrep.R")
 source(file="code/FishPrep.R")
 source(file="code/WeatherPrep.R")
+
+## Combine data sets ###

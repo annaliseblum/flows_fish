@@ -1,5 +1,7 @@
 ##Flow data prep and explore
 #Goal: predict LFs = annual 7day min flows
+###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
+### Annalise G Blum
 
 library(DataCombine)
 library(ggplot2)
@@ -25,8 +27,15 @@ df2<-df1[df1$daysperyr>364,] #remove years with less than 365 days of data
 length(unique(df2$site_no)) #47 sites
 
 #create fish year variable because looking at previous summer, fall, winter spring to each summer's fish counts
-sdata$year<-as.integer(sdata$year)
-sdata$year.f <- ifelse(sdata$season=="winter"|sdata$season=="spring", sdata$year, sdata$year+1) 
+df2$year<-as.integer(df2$year)
+df2$year.f <- ifelse(df2$season=="winter"|df2$season=="spring", df2$year, df2$year+1) 
+
+##Kanno defines seasons as fall=Aug-Nov, winter=dec-feb, spring=march-may, summer=june-aug
+df2$season[df2$month=="12"|df2$month=="01"|df2$month=="02"]<-"winter"
+df2$season[df2$month=="03"|df2$month=="04"|df2$month=="05"]<-"spring"
+df2$season[df2$month=="06"|df2$month=="07"|df2$month=="08"]<-"summer"
+df2$season[df2$month=="09"|df2$month=="10"|df2$month=="11"]<-"fall"
+df2$seasonf<-as.factor(df2$season)
 
 #### 2 - subset for sites with long enough records and find MA-FDCs for all of the sites####
 #how many years of data per site?
@@ -66,7 +75,7 @@ MAFDCs<-t(as.data.frame(lapply(L_forMAFDC,createMAFDC))) #transpose application 
 #### 3 - Metric 1: Average seasonal flows  ####
 
 ##Average seasonal flow
-avgflow <- aggregate(df5$cfs,by=list(df5$site_no, df5$year,df5$season),FUN=mean)
+avgflow <- aggregate(df4$cfs,by=list(df4$site_no, df4$year,df4$season),FUN=mean)
 names(avgflow)<-c("site_no","year","season","avgSflow")
 summary(avgflow$avgSflow)
 #check average seasonal average flows by season
@@ -76,17 +85,42 @@ summary(avgflow$avgSflow)
 #Probably use Palmer Drought index for drought
 #for now can define as any event below 0.01 percentile MA-FDC= drought
 #for now can define as any event above .99 percentile MA-FDC= flood
-MAFDC.01p <- apply(MAFDCs,1,FUN=quantile,probs=0.01)
-MAFDC.99p <- apply(MAFDCs,1,FUN=quantile,probs=0.99)
+MAFDC.01p <- apply(MAFDCs,1,FUN=quantile,probs=0.01,type=6)
+MAFDC.99p <- apply(MAFDCs,1,FUN=quantile,probs=0.99,type=6) #type 6: m = p. p[k] = k / (n + 1).
 
 #make into dataframes
+MAFDC.01p_df<-data.frame(site_no=substr(names(MAFDC.01p),2,9), MAFDC.01p=MAFDC.01p, row.names=NULL)
+MAFDC.01p_df$site_no<-as.character(MAFDC.01p_df$site_no)
 
-MAFDC.99p_df<-data.frame(site=names(MAFDC.99p), MAFDC.99p=MAFDC.99p, row.names=NULL)
+MAFDC.99p_df<-data.frame(site_no=substr(names(MAFDC.99p),2,9), MAFDC.99p=MAFDC.99p, row.names=NULL)
+MAFDC.99p_df$site_no<-as.character(MAFDC.99p_df$site_no)
 
-#Dummy coding drought = 1 for any flow below MAFDC.01p during a given season
+#merge datasets
+df4_MAFDC<-merge(df4,MAFDC.01p_df,by="site_no")
+df4_MAFDC<-merge(df4_MAFDC,MAFDC.99p_df,by="site_no")
 
-df4
+#dummy variable coding
+df4_MAFDC$DroughtD<-ifelse(df4_MAFDC$MAFDC.01p>df4_MAFDC$cfs, 1, 0)
+#CHECK: sum(df4_MAFDC$DroughtD)/length(df4_MAFDC$DroughtD) = 0.042 - why not closer to 0.01? maybe because of ties??
+df4_MAFDC$FloodD<-ifelse(df4_MAFDC$MAFDC.99p<df4_MAFDC$cfs, 1, 0)
+#CHECK: sum(df4_MAFDC$FloodD)/length(df4_MAFDC$DroughtD) = 0.011
 
+#Collapse data to monthly level
+df4_MAFDC$tally<-1
+month_FDDummy <- ddply(df4_MAFDC, .(site_no, year,month), summarize, 
+                 dayspermonth=sum(tally),
+                 Drought_days = sum(DroughtD, na.rm = T),
+                 Flood_days = sum(FloodD, na.rm = T)
+)
+
+#Collapse to seasonal level:
+S_FDDummy <- ddply(df4_MAFDC, .(site_no, year,season), summarize, 
+                    daysperseason=sum(tally),
+                    Drought_days = sum(DroughtD, na.rm = T),
+                    Flood_days = sum(FloodD, na.rm = T)
+)
+S_FDDummy$Drought<-ifelse(S_FDDummy$Drought_days>0,1,0)
+S_FDDummy$Flood<-ifelse(S_FDDummy$Flood_days>0,1,0)
 
 #### 5 - Metric 3: Magnitude (Intensity/Severity) LF and HFs  ####
 
@@ -111,14 +145,6 @@ df5<-df4S #rename
 
 df5$avg7day<-rowMeans(subset(df5, select = c("cfs","cfsL1","cfsL2","cfsL3","cfsF1","cfsF2","cfsF3")), na.rm = TRUE)
 df5$avg3day<-rowMeans(subset(df5, select = c("cfs","cfsL1","cfsF1")), na.rm = TRUE)
-
-##Kanno defines seasons as fall=Aug-Nov, winter=dec-feb, spring=march-may, summer=june-aug
-df5$season[df5$month=="12"|df5$month=="01"|df5$month=="02"]<-"winter"
-df5$season[df5$month=="03"|df5$month=="04"|df5$month=="05"]<-"spring"
-df5$season[df5$month=="06"|df5$month=="07"|df5$month=="08"]<-"summer"
-df5$season[df5$month=="09"|df5$month=="10"|df5$month=="11"]<-"fall"
-
-df5$seasonf<-as.factor(df5$season)
 
 ##Collapse to seasonal level to find min7day and min3day flow for each season, year and site
 minflow7 <- aggregate(df5$avg7day,by=list(df5$site_no, df5$year,df5$season),FUN=min)
@@ -155,62 +181,63 @@ maxflow<-merge(maxflow1,maxflow3,by=c("site_no","year","season"))
 # check2 <- aggregate(maxflow$max3dayflow,by=list(maxflow$site_no),FUN=max)
 # sum(check1$x<check2$x) #0, good
 
+##Merge max and min flow data sets
+minmaxflow<-merge(minflow,maxflow,by=c("site_no","year","season"))
+
 #### 6 - Metric 4: Duration: days below .05 percentile MA-FDC or above .95 MA-FDC  ####
 
-##BELOW MUST BE ADAPTED TO BE MA-FDC percentiles!!!!!!
-##Find how many days flows are below 0.01 percentile within each season
-flow.01p <- aggregate(df5$cfs,by=list(df5$site_no),FUN=quantile,probs=0.01)
-names(flow.01p)<-c("site_no","cfs.01p")
-#merge back into df5 to get number of days in each season with flows below
-df6<-merge(df5,flow.01p,by="site_no")
-df6$below.01p<-ifelse(df6$cfs.01p>=df6$cfs,1,0)
+##Low Flow duration - how many days flows are below 0.05 percentile within each season: MAFDCs
+##High Flow duration - how many days flows are above 0.95 percentile within each season: MAFDCs
+MAFDC.05p <- apply(MAFDCs,1,FUN=quantile,probs=0.05,type=6)
+MAFDC.95p <- apply(MAFDCs,1,FUN=quantile,probs=0.95,type=6)
 
-# #test to make sure it makes sense
-# agg1 <- aggregate(df6$below.01p,by=list(df5$site_no),FUN=sum) #
-# agg2 <- aggregate(df6$below.01p,by=list(df5$site_no),FUN=length) #,df5$month
-# cbind(agg1,agg2$x*.01)
-#also individual sites:
-summary(df5$cfs[df5$site_no=="01539000"])
+#make into dataframes
+MAFDC.05p_df<-data.frame(site_no=substr(names(MAFDC.05p),2,9), MAFDC.05p=MAFDC.05p, row.names=NULL)
+MAFDC.05p_df$site_no<-as.character(MAFDC.05p_df$site_no)
 
-Sdays.01 <- aggregate(df6$below.01p,by=list(df5$site_no,df5$year,df5$season),FUN=sum) #
-names(Sdays.01)<-c("site_no","year","season","days.01p")
-  
-#merge drought and min flow
-lowflow<-merge(Sdays.01,minflow,by=c("site_no","year","season"))
+MAFDC.95p_df<-data.frame(site_no=substr(names(MAFDC.95p),2,9), MAFDC.95p=MAFDC.95p, row.names=NULL)
+MAFDC.95p_df$site_no<-as.character(MAFDC.95p_df$site_no)
 
-#number of days above 98%ile
-flow.98p <- aggregate(df5$cfs,by=list(df5$site_no),FUN=quantile,probs=0.98)
-names(flow.98p)<-c("site_no","cfs.98p")
-#merge back into df5 to get number of days in each season with flows below
-df7<-merge(df5,flow.98p,by="site_no")
-df7$above.98p<-ifelse(df7$cfs.98p<df6$cfs,1,0)
+#merge datasets
+df4_Duration<-merge(df4,MAFDC.05p_df,by="site_no")
+df4_Duration<-merge(df4_Duration,MAFDC.95p_df,by="site_no")
 
-# #test to make sure it makes sense - matches even better than with low flows
-# agg3 <- aggregate(df7$above.98p,by=list(df5$site_no),FUN=sum) #
-# agg4 <- aggregate(df7$above.98p,by=list(df5$site_no),FUN=length) #,df5$month
-# cbind(agg3,agg4$x*.02)
+#dummy variable coding for a Low or High Flow day
+df4_Duration$LFD<-ifelse(df4_Duration$MAFDC.05p>df4_Duration$cfs, 1, 0)
+#CHECK: sum(df4_Duration$LFD)/length(df4_Duration$LFD) = .071
+df4_Duration$HFD<-ifelse(df4_Duration$MAFDC.95p<df4_Duration$cfs, 1, 0)
+#CHECK: sum(df4_Duration$HFD)/length(df4_Duration$HFD) = .063
 
-Sdays.98 <- aggregate(df7$cfs.98p,by=list(df5$site_no,df5$year,df5$season),FUN=sum) #
-names(Sdays.98)<-c("site_no","year","season","days.98p")
+#df4_Duration$tally=1
+#Collapse to seasonal level:
+S_Duration <- ddply(df4_Duration, .(site_no, year,season), summarize, 
+                   #daysperseason=sum(tally),
+                   LF_days = sum(LFD, na.rm = T),
+                   HF_days = sum(HFD, na.rm = T)
+)
 
-#merge Sdays.98 and max flow
-highflow<-merge(Sdays.98,maxflow,by=c("site_no","year","season"))
+#### 7 - Merge Metrics datasets  ####
+# avgflow
+# S_FDDummy
+# minmaxflow
+# S_Duration
 
-##merge average, min and high flow data sets
-sdata0<-merge(lowflow,highflow,by=c("site_no", "year","season"))
-sdata<-merge(avgflow,sdata0,by=c("site_no", "year","season"))
+sdata0<-merge(avgflow,S_FDDummy,by=c("site_no", "year","season"))
+sdata0<-merge(sdata0,minmaxflow,by=c("site_no", "year","season"))
+sdata<-merge(sdata0,S_Duration,by=c("site_no", "year","season"))
 
 head(sdata)
 
 sflow<-sdata
 save(sflow,file="output/sflow.rdata")
 
-
-#### UVA flow data prep ####
+# #### UVA flow data prep ####
 UVAstreamsSC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
 UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
 
 #aggregate to daily values
-UVA_daily<-aggregate(UVA_Discharge$cfs,by=list(UVA_Discharge$StationID,UVA_Discharge$year,UVA_Discharge$month,UVA_Discharge$day),mean)
+UVA_daily<-aggregate(UVA_Discharge$cfs,by=list(UVA_Discharge$StationID,UVA_Discharge$year,
+UVA_Discharge$month,UVA_Discharge$day),mean)
 names(UVA_daily)<-c("UVAsite","year","month","day","daily_cfs")
 save(UVA_daily,file="data/UVA_daily.rdata")
+sum(UVA_daily$daily_cfs==0)/length(UVA_daily$daily_cfs) #=0.162 are zeros
