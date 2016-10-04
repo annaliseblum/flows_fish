@@ -41,8 +41,8 @@ YOY_Abun$site_no<-substr(rownames(YOY_Abun),3,9)
 fish_YAbu<-melt.data.frame(YOY_Abun,id.vars="site_no")
 names(fish_YAbu)<-c("site_no","year","EstYOYAbu")
 
-#create fish year variable
-fish_YAbu$year.f<-as.numeric(as.character(fish_YAbu$year)) #fish years are the same as years for the fish data 
+#Create new year variable
+fish_YAbu$Nyear<-as.numeric(as.character(fish_YAbu$year))-1981 #to get years 1-29
 #(each year starts in starts fall, ends in summer)
 
 save(fish_YAbu,file="output/fish_YAbu.rdata")
@@ -69,6 +69,8 @@ fishSC<-fishSC[c("SiteID","DA_SQKM","HUC8","Lat_n83","Lon_n83","REACH_CODE",
                    "Slope_deg","Aspect_deg", "Elev_m")]
 names(fishSC)<-c("site_no","DA_SQKM","HUC8","LAT_GAGE","LNG_GAGE","REACH_CODE",
                   "Slope_pct","Aspect_deg","Elev_m")
+
+fishSC$LNG_GAGE.T<- fishSC$LNG_GAGE+100
 
 save(fishSC,file="output/fishSC.rdata")
 

@@ -1,5 +1,13 @@
 ##functions
 
+##createMAFDC
+createMAFDC<-function(x) { #x=dataframe with 2 columns: year and cfs
+  asmatrix<-data.frame(split(x[,2],x[1]))
+  sortedmatrix<-apply(asmatrix,2,sort) #sort the flows with in each year in increasing order
+  MAFDC<-apply(sortedmatrix,1,median) #then take median of each "day-tile" column
+  return(MAFDC)
+}
+
 #standardize variables
 standard<-function(x) { #x=time series of 7day LFs
   stand.var<-(x-mean(x))/sd(x)

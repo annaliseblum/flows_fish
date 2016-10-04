@@ -52,11 +52,11 @@ length(unique(rawDailyData$site_no)) #there are 49 sites with flow data from the
 
 ####3 - USGS sites basin characteristics from GAGESII ####
 GAGESII_Hydro <- read.csv("data/GAGESII_Hydro.csv",colClasses=c("character",rep("numeric",33))) #fix classes
-ncol(GAGESII_Hydro); head(GAGESII_Hydro)
+#ncol(GAGESII_Hydro); head(GAGESII_Hydro)
 names(GAGESII_Hydro)[1]<-"site_no"
 
 GAGESII_Topo <- read.csv("data/GAGESII_Topo.csv",colClasses=c("character",rep("numeric",12))) #
-ncol(GAGESII_Topo); head(GAGESII_Topo)
+#ncol(GAGESII_Topo); head(GAGESII_Topo)
 names(GAGESII_Topo)[1]<-"site_no"
 
 #Pull just the variables for which I have for the fish sites also
@@ -67,7 +67,7 @@ GAGESII_HydroC<-GAGESII_Hydro[c("site_no","REACHCODE","BFI_AVE","TOPWET")]
 
 rawUSGS_BC<-merge(SitesHUC2,GAGESII_HydroC,by="site_no")
 
-rawUSGS_BC<-merge(USGS_BC,GAGESII_TopoC)
+rawUSGS_BC<-merge(rawUSGS_BC,GAGESII_TopoC)
 save(rawUSGS_BC,file="output/rawUSGS_BC.rdata")
 
 ####4 - Import fish data and site info from Kanno et al sites####
