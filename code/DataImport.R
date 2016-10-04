@@ -1,16 +1,17 @@
 ##Import Raw Data and save as r data sets for fish and extreme flows project
-##Created: July 5, 2016 Updated: Sept 28,2016
+##Created: July 5, 2016 Updated: Sept 30,2016
 ##Annalise Blum annaliseblum@gmail.com
 
-#data sets created in this file:
+#rm(list=ls())
+
+#data sets created in this file (And section):
 # 2 load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
 # 3 load("output/USGS_BC.rdata") #basin characteristics from GAGESII
 # 4 load("output/fishsiteDf.rdata") #fish site characteristics from Kanno et al (2016)
 # 4 load("output/countAr.rdata") #fish DATA array from Kanno et al (2016)
 # 5 load("output/UVAstreamsSC.rdata") #UVA sites characteristics
 # 5 load("output/UVA_Discharge.rdata") #UVA flow data
-
-#rm(list=ls())
+# 6 load("output/DAYMET.rdata") # DAYMET data ####
 
 library(stringr)
 library("dataRetrieval") #to pull data from USGS site
@@ -64,10 +65,10 @@ GAGESII_TopoC<-GAGESII_Topo[c("site_no","SLOPE_PCT","ASPECT_DEGREES","ELEV_SITE_
 names(GAGESII_Hydro)
 GAGESII_HydroC<-GAGESII_Hydro[c("site_no","REACHCODE","BFI_AVE","TOPWET")]
 
-USGS_BC<-merge(SitesHUC2,GAGESII_HydroC,by="site_no")
+rawUSGS_BC<-merge(SitesHUC2,GAGESII_HydroC,by="site_no")
 
-USGS_BC<-merge(USGS_BC,GAGESII_TopoC)
-save(USGS_BC,file="output/USGS_BC.rdata")
+rawUSGS_BC<-merge(USGS_BC,GAGESII_TopoC)
+save(rawUSGS_BC,file="output/rawUSGS_BC.rdata")
 
 ####4 - Import fish data and site info from Kanno et al sites####
 
@@ -85,10 +86,48 @@ load("~/flows_fish/YK/countArray 115 sites.rdata")
 save(countAr,file="output/countAr.rdata")
 
 ####5 - Import UVA site info ####
-UVAstreamsSC <- ("data/UVAstreamsites.csv") #import site characteristics
-save(UVAstreamsSC,file="data/UVAstreamsSC.rdata")
-UVA_Discharge <- ("output/SWAS_data.csv") #import discharge data
+rawUVA_BC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
+names(rawUVA_BC)[2]<-"site_no" #rename site variable to be consistent with other data sets
+#for some reason, it is the 2nd variable...
+rawUVA_BC$site_no<-as.character(UVA_BC$site_no)
+save(rawUVA_BC,file="output/rawUVA_BC.rdata")
+
+UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
 save(UVA_Discharge,file="output/UVA_Discharge.rdata")
+
+####6 - Import DAYMET data ####
+
+#first for the original 34 sites I was looking at:
+#daymetRecord.csv is 1994-2010 for 53 USGS and 34 fish sites
+#DaymetAGBSites.csv is 1982-1993 for 53 USGS and 34 fish sites
+DAYMET1 <- read.csv("data/daymetRecord.csv") #6 variables ,colClasses=c("character",rep("numeric",5))
+DAYMET2 <- read.csv("data/DaymetAGBSites.csv") #This one has 4 additional variables (daylight, radiation, vp and swe)
+DAYMET2s<-DAYMET2[c("site_no", "featureid","date","tmax","tmin", "prcp")]
+DAYMETpart1<-rbind(DAYMET1,DAYMET2s)
+#str(DAYMETpart1) ; head(DAYMETpart1); tail(DAYMETpart1) #do spot checks
+
+#create date variable in date format for these sites its: %Y-%m-%d
+DAYMETpart1$Date<-as.Date(DAYMETpart1$date, "%Y-%m-%d")
+DAYMETpart1<-DAYMETpart1[c("site_no", "featureid","Date","tmax","tmin", "prcp")] #just variables I'm using
+
+##Second for the Additional Fish sites: NEWAGBSites - had to break it up into 4 chunks
+DAYMET86_1 <- read.csv("data/Daymet86_1.csv")
+DAYMET86_2 <- read.csv("data/Daymet86_2.csv")
+DAYMET86_3 <- read.csv("data/Daymet86_3.csv")
+DAYMET86_4 <- read.csv("data/Daymet86_4.csv")
+#str(DAYMET86_4) ; head(DAYMET86_4); tail(DAYMET86_4) #do spot checks
+
+DAYMET86<-rbind(DAYMET86_1,DAYMET86_2,DAYMET86_3,DAYMET86_4) #rbind these back into one dataset
+
+#create date variable in date format for these sites its: %m/%d/%y
+DAYMET86$Date<-as.Date(DAYMET86$date, "%m/%d/%y")
+DAYMET86s<-DAYMET86[c("site_no", "featureid","Date","tmax","tmin", "prcp")] #just variables I'm using
+
+#combine datasets
+names(DAYMETpart1); names(DAYMET86s) #match, good
+DAYMET<-rbind(DAYMETpart1,DAYMET86s)
+unique(DAYMET$site_no) #173 sites: 115 fish + 5 in SNP +53 USGS = 173
+save(DAYMET,file="output/DAYMET.rdata")
 
 #### For Kyle to get DAYMET - Pull Lat and Longs of the selected sites ####
 

@@ -4,99 +4,91 @@
 
 #run SitesImport.R, FlowPrep.R, WeatherPrep.R, FishPrep.R,
 #or just load the prepared data sets:
-#flow
-load("output/sflow.rdata") #flows
-load("output/SDAYMET.rdata") #weather
-load("output/USGS_BC.rdata")#USGS gages Basin Chars
+load("output/S.FB.rdata") #flows with basin characteristics
 
 #fish
-load("output/fish_YAbu34.rdata") #before fish_YP1 took just first pass, YOY for the 34 sites with 3 passes 1994-2010
-load("output/annual.DAYMET.rdata") #daymet weather melted wide
+load("output/fish_YAbu.rdata") #All fish data 1982-2010 for 115 sites
 load("output/fishSC.rdata") #all the site characteristics available
 
-#### 1 - Merge USGS GAGED sites info ####
-class(SDAYMET$site_no); class(sflow$site_no); class(USGS_BC$site_no)
-class(SDAYMET$year); class(sflow$year); class(USGS_BC$year) #right, BCs are time-invariant
-class(SDAYMET$season); class(sflow$season); class(USGS_BC$season)
+#weather -WHICH OF THESE TO USE??
+load("output/SDAYMET.rdata") #weather
+load("output/aDAYMET.rdata") #weather - Annual
+load("output/annual.DAYMET.rdata") #daymet weather melted wide
 
-#rename site characteristics variables to match fish sample sites
-USGS_BC<-USGS_BC[c("site_no","DRAIN_SQMI","HUC02","LAT_GAGE","LNG_GAGE","REACHCODE",
-                   "SLOPE_PCT","ASPECT_DEGREES", "ELEV_SITE_M",
-                   "BFI_AVE","TOPWET","ELEV_MEAN_M_BASIN")] #these aren't in fish
-names(USGS_BC)<-c("site_no","DRAIN_SQMI","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE",
-                  "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET","ELEV_MEAN_M_BASIN")
+#### 1 - Merge GAGED sites with weather ####
+#check for consistent variable types across data sets: SEASONAL DATA SET OR ANNUAL LEVEL (SEASONS WIDE??)
+class(SDAYMET$site_no); class(S.FB$site_no)
+class(SDAYMET$year); class(S.FB$year)
+class(SDAYMET$season); class(S.FB$season)
 
-S.WF<-merge(aDAYMET,sflow,by=c("site_no","year"))
-S.WFB<-merge(S.WF,USGS_BC,by=c("site_no"))
+S.WFB<-merge(aDAYMET,S.FB,by=c("site_no","year")) #using weather from annual dataset but melted wide-NOW ONLY YEAR.F IN ADAYMET
 
 #USGS
 Usitelist<-as.data.frame(unique(S.WFB$site_no))
 names(Usitelist)<-"site_no"; Usitelist$site_no<-as.character(Usitelist$site_no)
-#pull just 29 USGS sites from all 34
+#pull 45 USGS sites that are actually included
 USGS_BC1<-merge(Usitelist,USGS_BC,by="site_no")
 
 # Check distributions of variables; transform ones with negs
-# sum(S.WFB$avgtmax<0) #7
-# head(S.WFB)
-# hist(S.WFB$totprecip) #pretty normal
-# hist(S.WFB$avgtmax) #not so normal
-# hist(S.WFB$avgtmin) #even less normal
-# hist(S.WFB$min7day) #lognormal?
-# summary(S.WFB$min7day)
-# sum(S.WFB$min7day==0) #7 of zero...
-# sort(S.WFB$min7day[S.WF$min7day<.05]) #next lowest is 0.004 some how? should be .01
-# summary(S.WFB$min3day)
-# sum(S.WFB$min3day==0) #8 of zero...
+summary(S.WFB) #look for negative values which will cause trouble
+sum(S.WFB$MaxTwinter<0) #28
+hist(log(S.WFB$maxdayflow)) #lognormal
+hist(log(S.WFB$min7day+.001))
+summary(S.WFB$min7day)
+sum(S.WFB$min7day==0) #33 zeros...
+sort(S.WFB$min7day[S.WFB$min7day<.05]) #next lowest is 0.0004 some how? should be .01
+summary(S.WFB$min3day)
+sum(S.WFB$min3day==0) #41 of zero...
 
 #replace zeros in LFs
-S.WFB$min7day[S.WFB$min7day==0]<- .005 #add .005 to the zeros so i can log
-S.WFB$min3day[S.WFB$min3day==0]<- .005 #add .005 to the zeros so i can log
+S.WFB$min7day[S.WFB$min7day==0]<- .0001 #add .0001 to the zeros so i can log
+S.WFB$min3day[S.WFB$min3day==0]<- .0001 #add .0001 to the zeros so i can log
 
-#hist(log(S.WFB$min7day)) #looks better!
+#transform vars with negs
+S.WFB$MaxTwinter.T<- S.WFB$MaxTwinter+3
 
-#transform ones with negs
-#summary(S.WFB) #check for negatives: avgtmax, avgtmin,LNG_GAGE
-
-S.WFB$avgtmax.T<- S.WFB$avgtmax+3
-# S.WFB$L1avgtmax.T<- S.WFB$L1avgtmax+3
-# S.WFB$L2avgtmax.T<- S.WFB$L2avgtmax+3
-# S.WFB$L3avgtmax.T<- S.WFB$L3avgtmax+3
-# S.WFB$L4avgtmax.T<- S.WFB$L4avgtmax+3
+#add 0.01 to Precip vars with zeros: Pmar, Psept, Poct 
+S.WFB$Pmar[S.WFB$Pmar==0]<- .01
+S.WFB$Psept[S.WFB$Psept==0]<- .01
+S.WFB$Poct[S.WFB$Poct==0]<- .01
 
 #S.WFB$avgtmin.T<- S.WFB$avgtmin+10
 S.WFB$LNG_GAGE.T<- S.WFB$LNG_GAGE+100
 summary(S.WFB)
 
-#replace zeros in march and october precip
-S.WFB$Pmar[S.WFB$Pmar==0]<- .5 #add .5 to the zeros so i can log
-S.WFB$Poct[S.WFB$Poct==0]<- .5 #add .5 to the zeros so i can log
+#create fish year variable because looking at previous summer, fall, winter spring to each summer's fish counts
+S.WFB$year<-as.integer(S.WFB$year)
+S.WFB$year.f <- ifelse(S.WFB$season=="winter"|S.WFB$season=="spring", S.WFB$year, S.WFB$year+1) 
+
+#need variable USGS, UVA or fish
+S.WFB$site_no[is.na(S.WFB$REACH_CODE)] #only the fish sites!!
+S.WFB$site_type<-ifelse(is.na(S.WFB$REACH_CODE)==T,"UVA","USGS")
 
 save(S.WFB,file="output/S.WFB.rdata")
 
-#get merged data set at annual level for plotting
-#need to reshape sflow data to be annual
-annual7minflow <- dcast(sflow, site_no + year.f ~ season,value.var = "min7day") #need to get wide format
-names(annual7minflow)<-c("site_no","year.f","LFfall", "LFspring", "LFsummer", "LFwinter")
-
-#merge at year and site
-A.Flows<-merge(annual.DAYMET,annual7minflow,by=c("site_no","year.f"))
-str(A.Flows)
-summary(A.Flows) #lose the 2011s in DAYMET because no fish data for then...
-length(unique(A.Flows$site_no)) #45
+##FIGURE OUT WHAT THIS IS FOR
+# #get merged data set at annual level for plotting
+# #need to reshape sflow data to be annual
+# annual7minflow <- dcast(sflow, site_no + year.f ~ season,value.var = "min7day") #need to get wide format
+# names(annual7minflow)<-c("site_no","year.f","LFfall", "LFspring", "LFsummer", "LFwinter")
+# 
+# #merge at year and site
+# A.Flows<-merge(annual.DAYMET,annual7minflow,by=c("site_no","year.f"))
+# str(A.Flows)
+# summary(A.Flows) #lose the 2011s in DAYMET because no fish data for then...
+# length(unique(A.Flows$site_no)) #45
 
 #### 2 - Merge fish data with weather and basin characteristics ####
-names(fish_YAbu34)
+names(fish_YAbu)
 names(fishSC) 
-#names(fish_YP1)[1]<-"site_no" #rename as site_no to be consistent
 
-class(annual.DAYMET$site_no); class(fish_YAbu34$site_no); class(fishSC$site_no) #need to be all character to merge
+class(aDAYMET$site_no); class(fish_YAbu$site_no); class(fishSC$site_no) #need to be all character to merge
 fishSC$site_no<-as.character(fishSC$site_no)
 
-fish_YAbu34$year.f<-as.numeric(as.character(fish_YAbu34$year)) #fish years are the same as years for the fish data (they are really summer-spring)
-class(annual.DAYMET$year.f); class(fish_YAbu34$year.f) 
+class(aDAYMET$year.f); class(fish_YAbu$year.f) 
 
 #merge at year and site
-A.FW<-merge(annual.DAYMET,fish_YAbu34,by=c("site_no","year.f"))
+A.FW<-merge(aDAYMET,fish_YAbu,by=c("site_no","year.f"))
 str(A.FW)
 summary(A.FW) #lose the 2011s in DAYMET because no fish data for then...
 length(unique(A.FW$site_no)) #34 sites all made it!

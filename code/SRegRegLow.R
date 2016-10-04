@@ -17,14 +17,14 @@ summary(SuFa.WFB)
 
 #possible variables:
 # > names(S.WFB)
-# [1] "site_no"           "year"              "Pfall"             "Pspring"           "Psummer"           "Pwinter"           "MaxTfall"         
-# [8] "MaxTspring"        "MaxTsummer"        "MaxTwinter"        "MinTfall"          "MinTspring"        "MinTsummer"        "MinTwinter"       
-# [15] "Pjan"              "Pfeb"              "Pmar"              "Papril"            "Pmay"              "Pjune"             "Pjuly"            
-# [22] "Paug"              "Psept"             "Poct"              "Pnov"              "Pdec"              "maxP3fall"         "maxP3spring"      
-# [29] "maxP3summer"       "maxP3winter"       "maxP1fall"         "maxP1spring"       "maxP1summer"       "maxP1winter"       "season"           
-# [36] "avgSflow"          "days.01p"          "min7day"           "min3day"           "days.98p"          "maxdayflow"        "max3dayflow"      
-# [43] "year.f"            "DRAIN_SQMI"        "HUC02"             "LAT_GAGE"          "LNG_GAGE"          "REACH_CODE"        "Slope_pct"        
-# [50] "Aspect_deg"        "Elev_m"            "BFI_AVE"           "TOPWET"            "ELEV_MEAN_M_BASIN" "LNG_GAGE.T"     
+# [1] "site_no"           "year"              "Pfall"     "Pspring"           "Psummer"           "Pwinter"     "MaxTfall"         
+# [8] "MaxTspring"        "MaxTsummer"        "MaxTwinter"  "MinTfall"          "MinTspring"        "MinTsummer"  "MinTwinter"       
+# [15] "Pjan"              "Pfeb"              "Pmar"      "Papril"            "Pmay"              "Pjune"      "Pjuly"            
+# [22] "Paug"              "Psept"             "Poct"      "Pnov"              "Pdec"              "maxP3fall"  "maxP3spring"      
+# [29] "maxP3summer"       "maxP3winter"       "maxP1fall"   "maxP1spring"       "maxP1summer"       "maxP1winter" "season"           
+# [36] "avgSflow"          "days.01p"          "min7day"     "min3day"           "days.98p"          "maxdayflow"  "max3dayflow"      
+# [43] "year.f"            "DRAIN_SQMI"        "HUC02"       "LAT_GAGE"          "LNG_GAGE"          "REACH_CODE" "Slope_pct"        
+# [50] "Aspect_deg"        "Elev_m"            "BFI_AVE"     "TOPWET"            "ELEV_MEAN_M_BASIN" "LNG_GAGE.T"     
 
 #combined summer and fall, which vars are useful? start with seasonal P and T and lags
 SDLF1<-lm(log(min7day)~log(Pfall+Psummer)+log(MaxTsummer)+log(MaxTfall)+
@@ -43,7 +43,7 @@ ResidPlots(SDLF2)
 
 ##good! fall precip doesn't explain previous summer flow at all
 
-#try adding the variables I don't have for fish sites just to see how helpful they are: BFI increased adjR2 from .75 to .79 +log(TOPWET)
+#try adding the variables I don't have for fish sites just to see how helpful: BFI increased adjR2 from .75 to .79 +log(TOPWET)
 SDLF3<-lm(log(min7day)~log(Pfall)+log(Psummer)+
             log(Pwinter)+log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Elev_m) + log(BFI_AVE)
           ,data=SuFa.WFB[SuFa.WFB$season=="summer",])
@@ -95,7 +95,8 @@ ResidPlots(TDLFf)
 ####Model selection - all, then stepwise - Pooled model ####
 #Kanno used average max T, I find min to increase adjR2 by 0.0073
 fit1<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+
-           log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+           log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)
+         +log(L3avgtmax.T)+log(L4avgtmax.T)+
            log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
            log(Elev_m), data=S.WFB)
 summary(fit1)
@@ -109,7 +110,8 @@ step$anova # display results - just removes same season max T and longitude
 
 #final anova linear model
 fit.an<-lm(log(min7day)~log(totprecip)+
-           log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+           log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)
+           +log(L3avgtmax.T)+log(L4avgtmax.T)+
            log(DRAIN_SQMI)+log(LAT_GAGE)+log(Slope_pct)+log(Aspect_deg)+
            log(Elev_m), data=S.WFB)
 summary(fit.an)
@@ -118,7 +120,8 @@ ResidPlots(fit.an)
 
 #check out FE with dummies
 fitFE<-lm(log(min7day)~factor(site_no)+log(totprecip)+log(avgtmax.T)+
-            log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+            log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)
+          +log(L3avgtmax.T)+log(L4avgtmax.T)+
             log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
             log(Elev_m), data=S.WFB)
 summary(fitFE)
@@ -126,7 +129,8 @@ summary(fitFE)
 
 #check out SEASONAL dummies
 fitSeaD<-lm(log(min7day)~factor(season)+log(totprecip)+log(avgtmax.T)+
-            log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+            log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)
+            +log(L3avgtmax.T)+log(L4avgtmax.T)+
             log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
             log(Elev_m), data=S.WFB)
 summary(fitSeaD)
@@ -135,7 +139,8 @@ ResidPlots(fitSeaD)
 
 #try adding average BFI super significant, TOPWET isn't. Only increased adjR2 a little
 fitBFI<-lm(log(min7day)~log(totprecip)+
-             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)
+           +log(L3avgtmax.T)+log(L4avgtmax.T)+
              log(DRAIN_SQMI)+log(LAT_GAGE)+log(Slope_pct)+log(Aspect_deg)+
              log(Elev_m)+log(BFI_AVE), data=S.WFB)
 summary(fitBFI)
@@ -144,7 +149,8 @@ ResidPlots(fitBFI)
 
 ####ME - site-specific intercepts and slope on P, season-specific dummies
 fit2<-lmer(log(min7day)~(1+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
-             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)
+           +log(L3avgtmax.T)+log(L4avgtmax.T)+
              log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
              log(Elev_m), data=S.WFB)
 summary(fit2)
@@ -167,7 +173,8 @@ summary(fit3)
 ResidPlots(fit3)
 (exp(var(residuals(fit3)))-1)^.5 #calculate SE-prediction
 
-fit4<-lmer(log(min7day)~(1|season)+(0+log(avgtmax.T)+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+log(DRAIN_SQMI)+log(LAT_GAGE)+
+fit4<-lmer(log(min7day)~(1|season)+(0+log(avgtmax.T)+log(totprecip)|season)+log(totprecip)+log(avgtmax.T)+
+             log(DRAIN_SQMI)+log(LAT_GAGE)+
              log(LNG_GAGE.T)+log(SLOPE_PCT)+log(ASPECT_DEGREES)+log(ELEV_SITE_M),data=S.WFB,REML=F)
 summary(fit4)
 (exp(var(residuals(fit4)))-1)^.5 #calculate SE-prediction
@@ -184,7 +191,8 @@ S.WFBsort<-S.WFB[order(S.WFB$site_no,as.numeric(S.WFB$year),S.WFB$season.f),] #m
 S.WFB_LF<-slide(S.WFBsort, Var= "avgSflow", GroupVar= "site_no", NewVar= "avgSflowL1", slideBy = -1)
 
 fitLF<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
-             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)
+            log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
              log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+ log(avgSflow)+
              log(Elev_m), data=S.WFB_LF)
 summary(fitLF)
@@ -193,7 +201,8 @@ summary(fitLF)
 
 ####final Model - ME ####
 fitF<-lmer(log(min7day)~(1|site_no)+(0+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
-             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+             log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)
+           +log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
              log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
              log(Elev_m), data=S.WFB)
 summary(fitF)
@@ -235,7 +244,8 @@ USGS_BC[USGS_BC$site_no==badsites[5],] #two small sites, two average, one big
 fall.WFB<-S.WFB[S.WFB$season=="fall",] #pull just fall flows
 
 lmfitfall<-lm(log(min7day)~log(totprecip)+log(avgtmax.T)+
-                log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+                log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+
+                log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
                 log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
                 log(Elev_m), data=fall.WFB)
 summary(lmfitfall)
@@ -274,7 +284,8 @@ for (i in 1:length(site_no)){
 
   #2 Estimate model
   CV_ME<- lmer(log(min7day)~(1+log(totprecip)|site_no)+(1|season)+log(totprecip)+log(avgtmax.T)+
-                 log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
+                 log(L1totprecip)+log(L2totprecip)+log(L3totprecip)+log(L4totprecip)+log(L1avgtmax.T)+
+                 log(L2avgtmax.T)+log(L3avgtmax.T)+log(L4avgtmax.T)+
                  log(DRAIN_SQMI)+log(LAT_GAGE)+ log(LNG_GAGE.T)+log(Slope_pct)+log(Aspect_deg)+
                  log(Elev_m), data=data_CV)
   

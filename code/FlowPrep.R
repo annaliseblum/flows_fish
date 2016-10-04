@@ -1,35 +1,63 @@
 ##Flow data prep and explore
-#Goal: predict LFs = annual 7day min flows
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
 ### Annalise G Blum
+##Data set created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics
 
 library(DataCombine)
 library(ggplot2)
 
 load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
-daily<-rawDailyData
+USGSdaily<-rawDailyData
 
-#### 1 - clean data up ####
-daily$X_00060_00003_cd<-NULL
-daily$agency_cd<-NULL
-names(daily)[3]<-"cfs"
+#### 1 - clean data and bind USGS and UVA data together ####
+USGSdaily$X_00060_00003_cd<-NULL
+USGSdaily$agency_cd<-NULL
+names(USGSdaily)[3]<-"cfs"
 
 #evaluate record lengths of sites
-daily$month<-format(daily$Date, "%m") #extract month variable 
-daily$year<-format(daily$Date, "%Y") #extract year variable 
+USGSdaily$day<-format(USGSdaily$Date, "%d") #extract day variable 
+USGSdaily$month<-format(USGSdaily$Date, "%m") #extract month variable 
+USGSdaily$year<-format(USGSdaily$Date, "%Y") #extract year variable 
+
+#how many zero flows?
+sum(USGSdaily$cfs==0)/length(USGSdaily$cfs) # 0.00067
+
+# # UVA flow data prep ##
+load("output/UVA_Discharge.rdata") #flows for 5 sites in SNP from UVA SWAS team
+#aggregate to daily values
+UVA_daily<-aggregate(UVA_Discharge$cfs,by=list(UVA_Discharge$StationID,UVA_Discharge$year,
+                                               UVA_Discharge$month,UVA_Discharge$day),mean)
+names(UVA_daily)<-c("site_no","year","month","day","cfs")
+
+#need this dataset to match daily
+str(USGSdaily); names(USGSdaily) #site_no" "Date"    "cfs"     "month"   "year" 
+str(UVA_daily); names(UVA_daily) 
+UVA_daily$day<-str_pad(as.character(UVA_daily$day),width=2,side="left",pad=0)
+UVA_daily$month<-str_pad(as.character(UVA_daily$month),width=2,side="left",pad=0)
+UVA_daily$year<-as.character(UVA_daily$year)
+UVA_daily$Date<-as.Date(paste (UVA_daily$day,UVA_daily$month,UVA_daily$year,
+                               sep = "/"),"%d/%m/%Y")
+
+#re-order to match daily dataset of USGS flows
+UVA_daily<-UVA_daily[,c("site_no","Date","cfs","day","month","year")]
+names(UVA_daily);names(USGSdaily)
+
+save(UVA_daily,file="output/UVA_daily.rdata")
+#sum(UVA_daily$cfs==0)/length(UVA_daily$cfs) #=0.0162 are zeros
+
+#rbind USGS data (USGSdaily) and UVA data (UVA_daily)
+daily<-rbind(USGSdaily,UVA_daily)
+length(unique(Alldaily$site_no)) #49 USGS sites + 5 UVA sites =54
 
 #remove years without all 365 days of flow data
 YearTally <- aggregate(daily$cfs,by=list(daily$site_no, daily$year),FUN=length) #need to drop years without 365 days of data
 names(YearTally)<-c("site_no","year","daysperyr")
-sum(YearTally$daysperyr<365) #27 years with <365 flow values
+sum(YearTally$daysperyr<365) #44 years with <365 flow values
 df1<-data.frame(merge(daily, YearTally, by = c('site_no','year'))) #merge with flow data
 df2<-df1[df1$daysperyr>364,] #remove years with less than 365 days of data
-length(unique(df2$site_no)) #47 sites
+length(unique(df2$site_no)) #53 sites (lost 1 USGS one that didn't have any complete flow years)
 
-#create fish year variable because looking at previous summer, fall, winter spring to each summer's fish counts
-df2$year<-as.integer(df2$year)
-df2$year.f <- ifelse(df2$season=="winter"|df2$season=="spring", df2$year, df2$year+1) 
-
+#create season variable
 ##Kanno defines seasons as fall=Aug-Nov, winter=dec-feb, spring=march-may, summer=june-aug
 df2$season[df2$month=="12"|df2$month=="01"|df2$month=="02"]<-"winter"
 df2$season[df2$month=="03"|df2$month=="04"|df2$month=="05"]<-"spring"
@@ -37,7 +65,7 @@ df2$season[df2$month=="06"|df2$month=="07"|df2$month=="08"]<-"summer"
 df2$season[df2$month=="09"|df2$month=="10"|df2$month=="11"]<-"fall"
 df2$seasonf<-as.factor(df2$season)
 
-#### 2 - subset for sites with long enough records and find MA-FDCs for all of the sites####
+#### 2 - Subset for sites with long enough records and find MA-FDCs for all of the sites####
 #how many years of data per site?
 rec.lengths<-aggregate(df2$cfs,by=list(df2$site_no),length)
 names(rec.lengths)<-c("site_no","daysofflow")
@@ -46,11 +74,13 @@ df3<-data.frame(merge(df2, rec.lengths, by = c('site_no'))) #merge with flow dat
 
 #drop sites with less than 3 years of flow data
 df4<-df3[df3$daysofflow>3*365,] #remove sites with less than 3 (before 15 but lost too many) years of data
-length(unique(df4$site_no)) #45 sites remain!!
+length(unique(df4$site_no)) #50 sites remain!!
+
+#how many zero flows across both USGS and UVA sites?
+sum(df4$cfs==0)/length(df4$cfs) # 0.0023
 
 ###MA-FDC for each site
 #drop day days Feb 29th so all years n=365
-df4$day<-format(df4$Date, "%d") #extract month variable 
 forMAFDC<-df4[-which(df4$month=="02" & df4$day=="29"),]
 forMAFDC<-forMAFDC[c("site_no","year", "cfs")] #pull relevant variables
 
@@ -72,9 +102,15 @@ createMAFDC<-function(x) { #x=dataframe with 2 columns: year and cfs
 #then apply function to list to make each into a matrix of years X days of the year
 MAFDCs<-t(as.data.frame(lapply(L_forMAFDC,createMAFDC))) #transpose application of createMAFDC to get sites x "day-tiles"
 
-#### 3 - Metric 1: Average seasonal flows  ####
+#loop through site_nos to remove leading X for USGS sites:
+for (i in 1:length(rownames(MAFDCs))){
+  if (nchar(rownames(MAFDCs)[i])==9)
+    rownames(MAFDCs)[i]=substr(rownames(MAFDCs)[i],2,9)
+  else
+    rownames(MAFDCs)[i]=rownames(MAFDCs)[i]
+}
 
-##Average seasonal flow
+#### 3 - Metric 1: Average seasonal flows  ####
 avgflow <- aggregate(df4$cfs,by=list(df4$site_no, df4$year,df4$season),FUN=mean)
 names(avgflow)<-c("site_no","year","season","avgSflow")
 summary(avgflow$avgSflow)
@@ -82,17 +118,17 @@ summary(avgflow$avgSflow)
 #avgseasonalflows<-aggregate(avgflow$avgSflow,by=list(avgflow$season),mean); avgseasonalflows
 
 #### 4 - Metric 2: Dummy variable for drought or flood  ####
-#Probably use Palmer Drought index for drought
+#Probably should use Palmer Drought index for drought
 #for now can define as any event below 0.01 percentile MA-FDC= drought
 #for now can define as any event above .99 percentile MA-FDC= flood
 MAFDC.01p <- apply(MAFDCs,1,FUN=quantile,probs=0.01,type=6)
 MAFDC.99p <- apply(MAFDCs,1,FUN=quantile,probs=0.99,type=6) #type 6: m = p. p[k] = k / (n + 1).
 
 #make into dataframes
-MAFDC.01p_df<-data.frame(site_no=substr(names(MAFDC.01p),2,9), MAFDC.01p=MAFDC.01p, row.names=NULL)
+MAFDC.01p_df<-data.frame(site_no=names(MAFDC.01p), MAFDC.01p=MAFDC.01p, row.names=NULL)
 MAFDC.01p_df$site_no<-as.character(MAFDC.01p_df$site_no)
 
-MAFDC.99p_df<-data.frame(site_no=substr(names(MAFDC.99p),2,9), MAFDC.99p=MAFDC.99p, row.names=NULL)
+MAFDC.99p_df<-data.frame(site_no=names(MAFDC.99p), MAFDC.99p=MAFDC.99p, row.names=NULL)
 MAFDC.99p_df$site_no<-as.character(MAFDC.99p_df$site_no)
 
 #merge datasets
@@ -101,7 +137,7 @@ df4_MAFDC<-merge(df4_MAFDC,MAFDC.99p_df,by="site_no")
 
 #dummy variable coding
 df4_MAFDC$DroughtD<-ifelse(df4_MAFDC$MAFDC.01p>df4_MAFDC$cfs, 1, 0)
-#CHECK: sum(df4_MAFDC$DroughtD)/length(df4_MAFDC$DroughtD) = 0.042 - why not closer to 0.01? maybe because of ties??
+#CHECK: sum(df4_MAFDC$DroughtD)/length(df4_MAFDC$DroughtD) = 0.041 - why not closer to 0.01? maybe because of ties??
 df4_MAFDC$FloodD<-ifelse(df4_MAFDC$MAFDC.99p<df4_MAFDC$cfs, 1, 0)
 #CHECK: sum(df4_MAFDC$FloodD)/length(df4_MAFDC$DroughtD) = 0.011
 
@@ -192,10 +228,10 @@ MAFDC.05p <- apply(MAFDCs,1,FUN=quantile,probs=0.05,type=6)
 MAFDC.95p <- apply(MAFDCs,1,FUN=quantile,probs=0.95,type=6)
 
 #make into dataframes
-MAFDC.05p_df<-data.frame(site_no=substr(names(MAFDC.05p),2,9), MAFDC.05p=MAFDC.05p, row.names=NULL)
+MAFDC.05p_df<-data.frame(site_no=names(MAFDC.05p), MAFDC.05p=MAFDC.05p, row.names=NULL)
 MAFDC.05p_df$site_no<-as.character(MAFDC.05p_df$site_no)
 
-MAFDC.95p_df<-data.frame(site_no=substr(names(MAFDC.95p),2,9), MAFDC.95p=MAFDC.95p, row.names=NULL)
+MAFDC.95p_df<-data.frame(site_no=names(MAFDC.95p), MAFDC.95p=MAFDC.95p, row.names=NULL)
 MAFDC.95p_df$site_no<-as.character(MAFDC.95p_df$site_no)
 
 #merge datasets
@@ -226,18 +262,53 @@ sdata0<-merge(avgflow,S_FDDummy,by=c("site_no", "year","season"))
 sdata0<-merge(sdata0,minmaxflow,by=c("site_no", "year","season"))
 sdata<-merge(sdata0,S_Duration,by=c("site_no", "year","season"))
 
-head(sdata)
-
+head(sdata); tail(sdata); dim(sdata)
 sflow<-sdata
 save(sflow,file="output/sflow.rdata")
 
-# #### UVA flow data prep ####
-UVAstreamsSC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
-UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
+#### 8 - Basin Characteristic cleaning ####
 
-#aggregate to daily values
-UVA_daily<-aggregate(UVA_Discharge$cfs,by=list(UVA_Discharge$StationID,UVA_Discharge$year,
-UVA_Discharge$month,UVA_Discharge$day),mean)
-names(UVA_daily)<-c("UVAsite","year","month","day","daily_cfs")
-save(UVA_daily,file="data/UVA_daily.rdata")
-sum(UVA_daily$daily_cfs==0)/length(UVA_daily$daily_cfs) #=0.162 are zeros
+load("output/rawUSGS_BC.rdata")#USGS gages Basin Chars
+load("output/rawUVA_BC.rdata") #UVA gages Basin Chars
+
+#rename site characteristics variables to match fish sample sites
+#USGS: first get in correct order and pull necessary vars
+USGS_BC<-rawUSGS_BC[c("site_no","DRAIN_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REACHCODE",
+                   "SLOPE_PCT","ASPECT_DEGREES", "ELEV_SITE_M",
+                   "BFI_AVE","TOPWET")] #these aren't in fish
+names(USGS_BC)<-c("site_no","DRAIN_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE",
+                  "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET")
+USGS_BC$DRAIN_SQKM<-as.numeric(USGS_BC$DRAIN_SQKM)
+
+#UVA: first get in correct order and add necessary vars
+UVA_BC<-rawUVA_BC
+UVA_BC$HUC02<-NA
+UVA_BC$REACHCODE<-NA
+UVA_BC$SLOPE_PCT<-NA
+UVA_BC$ASPECT_DEGREES<-NA
+UVA_BC$BFI_AVE<-NA
+UVA_BC$TOPWET<-NA
+#convert DA to km2 from ha: 100 ha/km2
+UVA_BC$DRAIN_SQKM<-UVA_BC$Basin.Area..ha./100
+UVA_BC<-UVA_BC[c("site_no","DRAIN_SQKM","HUC02","Latitude","Longitude","REACHCODE",
+                 "SLOPE_PCT","ASPECT_DEGREES", "Elev..m.","BFI_AVE","TOPWET")]
+
+names(UVA_BC)<-c("site_no","DRAIN_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE",
+                  "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET")
+
+save(USGS_BC,file="output/rawUSGS_BC.rdata")#USGS gages Basin Chars - cleaned
+save(UVA_BC,file="output/rawUVA_BC.rdata") #UVA gages Basin Chars - cleaned
+
+#### 9 - Merge flows and Basin Characteristics ####
+#rbind basin characteristics:
+all_BC<-rbind(USGS_BC,UVA_BC)
+class(all_BC$site_no);class(sflow$site_no)
+S.FB<-merge(all_BC,sflow,by=c("site_no")) #merge to get Seasonal Flow and Basin characteristics
+
+#loop through site_nos to add "UVA_" to UVA sites:
+for (i in 1:length(S.FB$site_no)){
+  if (nchar(S.FB$site_no[i])==4)
+    S.FB$site_no[i]=paste("UVA_",S.FB$site_no[i],sep="")
+}
+
+save(S.FB,file="output/S.FB.rdata")
