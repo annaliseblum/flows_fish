@@ -7,10 +7,10 @@
 #data sets created in this file (And section):
 # 2 load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
 # 3 load("output/USGS_BC.rdata") #basin characteristics from GAGESII
-# 4 load("output/fishsiteDf.rdata") #fish site characteristics from Kanno et al (2016)
-# 4 load("output/countAr.rdata") #fish DATA array from Kanno et al (2016)
-# 5 load("output/UVAstreamsSC.rdata") #UVA sites characteristics
-# 5 load("output/UVA_Discharge.rdata") #UVA flow data
+# 4 load("output/UVAstreamsSC.rdata") #UVA sites characteristics
+# 4 load("output/UVA_Discharge.rdata") #UVA flow data
+# 5 load("output/fishsiteDf.rdata") #fish site characteristics from Kanno et al (2016)
+# 5 load("output/countAr.rdata") #fish DATA array from Kanno et al (2016)
 # 6 load("output/DAYMET.rdata") # DAYMET data ####
 
 library(stringr)
@@ -70,7 +70,17 @@ rawUSGS_BC<-merge(SitesHUC2,GAGESII_HydroC,by="site_no")
 rawUSGS_BC<-merge(rawUSGS_BC,GAGESII_TopoC)
 save(rawUSGS_BC,file="output/rawUSGS_BC.rdata")
 
-####4 - Import fish data and site info from Kanno et al sites####
+####4 - Import UVA site info ####
+rawUVA_BC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
+names(rawUVA_BC)[2]<-"site_no" #rename site variable to be consistent with other data sets
+#for some reason, it is the 2nd variable...
+rawUVA_BC$site_no<-as.character(UVA_BC$site_no)
+save(rawUVA_BC,file="output/rawUVA_BC.rdata")
+
+UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
+save(UVA_Discharge,file="output/UVA_Discharge.rdata")
+
+####5 - Import fish data and site info from Kanno et al sites####
 
 #sites
 fishsiteDf <- read.csv("YK/siteDf.csv")
@@ -84,16 +94,6 @@ fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 #load array with fish data from kanno folder
 load("~/flows_fish/YK/countArray 115 sites.rdata")
 save(countAr,file="output/countAr.rdata")
-
-####5 - Import UVA site info ####
-rawUVA_BC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
-names(rawUVA_BC)[2]<-"site_no" #rename site variable to be consistent with other data sets
-#for some reason, it is the 2nd variable...
-rawUVA_BC$site_no<-as.character(UVA_BC$site_no)
-save(rawUVA_BC,file="output/rawUVA_BC.rdata")
-
-UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
-save(UVA_Discharge,file="output/UVA_Discharge.rdata")
 
 ####6 - Import DAYMET data ####
 

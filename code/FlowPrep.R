@@ -1,7 +1,7 @@
 ##Flow data prep and explore
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
 ### Annalise G Blum
-##Data set created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics
+##Data sets created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics; "output/gagedsites_BC.data"
 
 library(DataCombine)
 library(ggplot2)
@@ -45,6 +45,10 @@ names(UVA_daily);names(USGSdaily)
 UVA_daily<-UVA_daily[UVA_daily$year<2011,]
 save(UVA_daily,file="output/UVA_daily.rdata")
 #sum(UVA_daily$cfs==0)/length(UVA_daily$cfs) #=0.0162 are zeros
+
+#Combine USGS and UVA sites
+USGSdaily$type<-"USGS"
+UVA_daily$type<-"UVA"
 
 #rbind USGS data (USGSdaily) and UVA data (UVA_daily)
 daily<-rbind(USGSdaily,UVA_daily)
@@ -277,6 +281,15 @@ sdata0<-merge(sdata0,minmaxflow,by=c("site_no", "Nyear","Nseason"))
 sdata<-merge(sdata0,S_Duration,by=c("site_no", "Nyear","Nseason"))
 
 head(sdata); tail(sdata); dim(sdata); str(sdata) #summary(sdata)
+
+#add site type and UVA to those site names
+sdata$type<-ifelse(nchar(sflow$site_no)==4,"UVA","USGS")
+#loop through site_nos to add "UVA_" to UVA sites:
+for (i in 1:length(sdata$site_no)){
+  if (nchar(sdata$site_no[i])==4) #(sdata$type=="UVA)
+    sdata$site_no[i]=paste("UVA_",sdata$site_no[i],sep="")
+}
+
 sflow<-sdata
 save(sflow,file="output/sflow.rdata")
 
@@ -291,6 +304,8 @@ USGS_BC<-rawUSGS_BC[c("site_no","DRAIN_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REAC
 names(USGS_BC)<-c("site_no","DA_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE",
                   "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET")
 USGS_BC$DA_SQKM<-as.numeric(USGS_BC$DA_SQKM)
+USGS_BC$type<-"USGS"
+save(USGS_BC,file="output/USGS_BC.rdata")#USGS gages Basin Chars - cleaned
 
 #UVA
 load("output/rawUVA_BC.rdata") #UVA gages Basin Chars
@@ -310,39 +325,43 @@ UVA_BC<-rawUVA_BC[c("site_no","DA_SQKM","HUC02","Latitude","Longitude","REACHCOD
 names(UVA_BC)<-c("site_no","DA_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE",
                   "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET")
 
-save(USGS_BC,file="output/USGS_BC.rdata")#USGS gages Basin Chars - cleaned
+#Add "UVA_" to UVA sites
+UVA_BC$site_no<-paste("UVA_",UVA_BC$site_no,sep="")
+UVA_BC$type<-"UVA"
 save(UVA_BC,file="output/UVA_BC.rdata") #UVA gages Basin Chars - cleaned
 
 #### 9 - Merge flows and Basin Characteristics ####
 #rbind basin characteristics:
-all_BC<-rbind(USGS_BC,UVA_BC)
-class(all_BC$site_no);class(sflow$site_no)
-S.FB<-merge(all_BC,sflow,by=c("site_no")) #merge to get Seasonal Flow and Basin characteristics
+gagedExtrasites_BC<-rbind(USGS_BC,UVA_BC)
+class(gagedExtrasites_BC$site_no);class(sflow$site_no)
 
-#loop through site_nos to add "UVA_" to UVA sites:
-for (i in 1:length(S.FB$site_no)){
-  if (nchar(S.FB$site_no[i])==4)
-    S.FB$site_no[i]=paste("UVA_",S.FB$site_no[i],sep="")
-}
+#Gaged sites (USGS and UVA) - get site list of characteristics only sites we are using
+Gagedsitelist<-as.data.frame(unique(sflow$site_no))
+names(Gagedsitelist)<-"site_no"; Gagedsitelist$site_no<-as.character(Gagedsitelist$site_no)
+gagedsites_BC<-merge(gagedExtrasites_BC,Gagedsitelist,by="site_no")
 
-# Check distributions of variables; transform ones with negs
-summary(S.FB) #look for negative values which will cause trouble
-#hist(log(S.FB$maxdayflow)) #lognormal-ish
-#hist(log(S.FB$min7day+.001))
-summary(S.FB$min7day)
-sum(S.FB$min7day==0) #32 zeros...
-sort(S.FB$min7day[S.FB$min7day<.05]) #next lowest is 0.004 some how? should be .01 - UVA sites??
-S.FB$site_no[S.FB$min7day<.01] #mostly UVA sites, but also 3 USGS sites
-summary(S.FB$min3day)
-sum(S.FB$min3day==0) #40 of zero
-sum(S.FB$min1day==0) #47 of zero
+save(gagedsites_BC,file="output/gagedsites_BC.rdata")
+
+#merge to get Seasonal Flow and Basin characteristics
+S.FB<-merge(gagedsites_BC,sflow,by=c("site_no","type")) 
+
+# # Check distributions of variables; transform ones with negs
+# summary(S.FB) #look for negative values which will cause trouble
+# #hist(log(S.FB$maxdayflow)) #lognormal-ish
+# #hist(log(S.FB$min7day+.001))
+# summary(S.FB$min7day)
+# sum(S.FB$min7day==0) #32 zeros...
+# sort(S.FB$min7day[S.FB$min7day<.05]) #next lowest is 0.004 some how? should be .01 - UVA sites??
+# S.FB$site_no[S.FB$min7day<.01] #mostly UVA sites, but also 3 USGS sites
+# summary(S.FB$min3day)
+# sum(S.FB$min3day==0) #40 of zero
+# sum(S.FB$min1day==0) #47 of zero
 
 #replace zeros in LFs
 S.FB$min7day[S.FB$min7day<.001]<- .001 #add .001 to the zeros so i can log
 S.FB$min3day[S.FB$min3day<.001]<- .001 #add .001 to the zeros so i can log
 S.FB$min1day[S.FB$min1day<.001]<- .001 #add .001 to the zeros so i can log
 
-S.FB$LNG_GAGE.T<- S.FB$LNG_GAGE+100
-summary(S.FB)
+S.FB$LNG_GAGE.T<- S.FB$LNG_GAGE+100 #summary(S.FB)
 
 save(S.FB,file="output/S.FB.rdata")
