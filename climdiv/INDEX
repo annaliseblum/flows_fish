@@ -1,0 +1,18 @@
+assign.poly.color	assign colors for plotting climate divisions
+col.coolhot20		color palette
+col.coolhot21		color palette
+plot.divdata		plot values as climate division polygons
+update.divdata		download, format and archive division data
+in.climdiv		match geo coordinates to a division
+in.poly			internal function for in.climdiv
+div.code                State Division Codes for each polygon
+western.divs		Western Division Codes for western United States
+western.states		state names for western United States
+western.ST		state abbreviations for western United States
+climdiv.poly            Climate Division Boundaries polylist
+divdat.pdsi             Palmer Drought Severity Index by Climate Division
+divdat.phdi             Palmer Hydrological Drought Index by Climate Division
+divdat.pmdi             Modified Palmer Drought Severity Index by Climate Division
+divdat.zndx             Palmer Z Index by Climate Division
+divdat.pcp		Precipitation by Climate Division
+divdat.tmp		Temperature by Climate Division

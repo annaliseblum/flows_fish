@@ -1,0 +1,10 @@
+Package: climdiv
+Title: U.S. Climate Division Data
+Version: 0.4
+Date: 2014-09-01
+Author: LeRoy Westerling <leroy.westerling@icloud.com>
+Depends: R (>= 3.1.1), maptools (>= 0.4-5), splancs (>= 2.01-15)
+Description:
+License: GPL2
+Maintainer: Anthony L. Westerling <leroy.westerling@icloud.com>
+Packaged: Tu Sep 02 10:15:00 2014; leroy

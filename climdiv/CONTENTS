@@ -1,0 +1,107 @@
+Entry: assign.poly.color
+Aliases: assign.poly.color
+Keywords: function
+Description: Assign Colors for Plotting Polygons in a Polygon List
+URL: ../../../library/climdiv/html/assign.poly.color.html
+
+Entry: climdiv.poly
+Aliases: climdiv.poly
+Keywords: datasets
+Description: polygon list containing Climate Division boundaries
+URL: ../../../library/climdiv/html/climdiv.poly.html
+
+Entry: div.code
+Aliases: div.code
+Keywords: datasets
+Description: U.S. Climate Division identifier codes
+URL: ../../../library/climdiv/html/div.code.html
+
+Entry: col.coolhot20
+Aliases: col.coolhot20
+Keywords: datasets
+Description: color palette
+URL: ../../../library/climdiv/html/col.coolhot20.html
+
+Entry: col.coolhot21
+Aliases: col.coolhot21
+Keywords: datasets
+Description: color palette
+URL: ../../../library/climdiv/html/col.coolhot20.html
+
+Entry: western.divs
+Aliases: western.divs
+Keywords: datasets
+Description: western states Climate Division identifier codes
+URL: ../../../library/climdiv/html/western.divs.html
+
+Entry: western.states
+Aliases: western.states
+Keywords: datasets
+Description: western state names
+URL: ../../../library/climdiv/html/western.states.html
+
+Entry: western.ST
+Aliases: western.ST
+Keywords: datasets
+Description: western states abbreviations
+URL: ../../../library/climdiv/html/western.ST.html
+
+Entry: update.divdata
+Aliases: update.divdata
+Keywords: function
+Description: download, format and archive climate division data
+URL: ../../../library/climdiv/html/update.divdata.html
+
+Entry: plot.divdata
+Aliases: plot.divdata
+Keywords: function
+Description: plot values as climate division polygons
+URL: ../../../library/climdiv/html/plot.divdata.html
+
+Entry: divdat.pdsi
+Aliases: divdat.pdsi
+Keywords: datasets
+Description: Monthly Palmer Drought Severity Index Values by Climate Division
+URL: ../../../library/climdiv/html/divdat.pdsi.html
+
+Entry: divdat.phdi
+Aliases: divdat.phdi
+Keywords: datasets
+Description: Monthly Palmer Hydrological Drought Index Values by Climate Division
+URL: ../../../library/climdiv/html/divdat.phdi.html
+
+Entry: divdat.pmdi
+Aliases: divdat.pmdi
+Keywords: datasets
+Description: Monthly Modified Palmer Drought Severity Index Values by Climate Division
+URL: ../../../library/climdiv/html/divdat.pmdi.html
+
+Entry: divdat.zndx
+Aliases: divdat.zndx
+Keywords: datasets
+Description: Monthly Palmer Z Index by United States Climate Division
+URL: ../../../library/climdiv/html/divdat.pmdi.html
+
+Entry: divdat.pcp
+Aliases: divdat.pcp
+Keywords: datasets
+Description: Monthly Precipitation by United States Climate Division
+URL: ../../../library/climdiv/html/divdat.pcp.html
+
+Entry: divdat.tmp
+Aliases: divdat.tmp
+Keywords: datasets
+Description: Monthly Mean Temperature by United States Climate Division
+URL: ../../../library/climdiv/html/divdat.tmp.html
+
+Entry: in.climdiv
+Aliases: in.climdiv
+Keywords: function
+Description: Function returns values from a selected Climate Division data set given geographic coordinates and dates.
+URL: ../../../library/climdiv/html/in.climdiv.html
+
+Entry: in.poly
+Aliases: in.poly
+Keywords: function
+Description: tests geographic coordinates in an array for inclusion within a list of polygons.
+URL: ../../../library/climdiv/html/in.poly.html
