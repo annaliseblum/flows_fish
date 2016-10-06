@@ -9,6 +9,7 @@ load("output/A.Fish.rdata") #Annual fish data
 load("output/sflow.rdata") #Seasonal flow data
 load("output/aDAYMET.rdata") #weather - Annual
 load("output/gagedsites_BC.data")# gages Basin Chars
+load("output/fishSC.rdata")
 
 #### Flows plots ####
 
@@ -127,31 +128,27 @@ length(unique(A.Flows$site_no)); length(unique(A.Fish$site_no))
 names(A.Flows)
 names(A.Fish)
 
-Sites_U.w<-A.Flows[c("site_no","Nyear","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+Sites_U.w<-A.Flows[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
                      "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
                      "MinTwinter","type")] #already have a type variable
 
-Sites_F.w<-A.Fish[c("site_no","Nyear","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+Sites_F.w<-A.Fish[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
                      "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
                      "MinTwinter")]
 Sites_F.w$type<-"fish" #have to add type var
 
-Site_Comp2<-rbind(Sites_U.w,Sites_F.w)
-Site_Comp2$type<-as.factor(Site_Comp2$type)
+Site_Comp<-rbind(Sites_U.w,Sites_F.w)
+Site_Comp$type<-as.factor(Site_Comp2$type)
 
-p1=ggplot(Site_Comp2, aes(factor(type), Pwinter)) + geom_boxplot()+ labs(title = "Winter Precipitation",x="",y="")
+#parallel time series
+ggplot(Site_Comp, aes(x=as.factor(Nyear), y=Pwinter)) + #, color=as.factor(fish_site))
+  geom_boxplot(aes(fill = factor(type))) + geom_smooth(se=F,aes(group = factor(type),color=factor(type)))
 
-ggplot(Site_Comp2, aes(x=as.factor(Nyear), y=Pwinter)) + #, color=as.factor(fish_site))
-  geom_boxplot(aes(fill = factor(type))) + stat_smooth( aes(fill = factor(type)))
-
-p <- ggplot(mtcars, aes(factor(cyl), mpg)) + geom_boxplot(aes(fill = factor(am)))
-
-p + geom_boxplot()
-p 
-
-p2=ggplot(Site_Comp, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="")
-p3=ggplot(Site_Comp, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="")
-p4=ggplot(Site_Comp, aes(factor(type), Elev_m)) + geom_boxplot()+ labs(title = "Elevation (m)",x="",y="")
+#simple boxplots
+p1=ggplot(Site_Comp, aes(factor(type), Psummer)) + geom_boxplot()+ labs(title = "Summer Precip",x="",y="")
+p2=ggplot(Site_Comp, aes(factor(type), Pfall)) + geom_boxplot()+ labs(title = "Fall Precip",x="",y="")
+p3=ggplot(Site_Comp, aes(factor(type), Pwinter)) + geom_boxplot()+ labs(title = "Winter Precip",x="",y="")
+p4=ggplot(Site_Comp, aes(factor(type), Pspring)) + geom_boxplot()+ labs(title = "Spring Precip",x="",y="")
 
 pdf("plots/Site_comparison.pdf") #
 multiplot(p1, p2, p3, p4, cols=2)
@@ -159,79 +156,52 @@ dev.off()
 
 summary(Site_Comp[Site_Comp$type=="fish",])
 summary(Site_Comp[Site_Comp$type=="USGS",])
+summary(Site_Comp[Site_Comp$type=="UVA",])
 
 #### Basin Characteristics Comparison ####
 
-#PULL sites I'm actually using!
-load("output/fishSC.rdata")
-#combine fish and USGS site characteristics to make boxplot comparisons
-names(USGS_BC1)
-names(fishSC)
-
-Sites_U<-USGS_BC1[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
-Sites_F<-fishSC[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","Slope_pct","Aspect_deg","Elev_m")]
-
-Sites_U$type<-"USGS"
-Sites_F$type<-"fish"
-
-Site_Comp<-rbind(Sites_U,Sites_F)
-Site_Comp$type<-as.factor(Site_Comp$type)
-
-p1=ggplot(Site_Comp, aes(factor(type), DRAIN_SQMI)) + geom_boxplot()+ labs(title = "Drainage area (mi2)",x="",y="")
-p2=ggplot(Site_Comp, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="")
-p3=ggplot(Site_Comp, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="")
+p1=ggplot(Site_Comp, aes(factor(type), DA_SQKM)) + geom_boxplot()+ labs(title = "Drainage area (km2)",x="",y="km2")+
+  scale_y_continuous(limits = c(0,500))
+p2=ggplot(Site_Comp, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="") #no data for UVA
+p3=ggplot(Site_Comp, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="") #no data for UVA
 p4=ggplot(Site_Comp, aes(factor(type), Elev_m)) + geom_boxplot()+ labs(title = "Elevation (m)",x="",y="")
 
 pdf("plots/Site_comparison.pdf") #
 multiplot(p1, p2, p3, p4, cols=2)
 dev.off()
-
-summary(Site_Comp[Site_Comp$type=="fish",])
-summary(Site_Comp[Site_Comp$type=="USGS",])
 
 #### Maps ####
 library("ggmap")
 library("ggplot2")
 
-summary(SitesHUC2$LAT_GAGE)
-summary(SitesHUC2$LNG_GAGE)
+summary(gagedsites_BC$LAT_GAGE)
+summary(gagedsites_BC$LNG_GAGE)
 
-summary(fishsiteDf$Lat_n83)
-summary(fishsiteDf$Lon_n83)
+summary(fishSC$LAT_GAGE)
+summary(fishSC$LNG_GAGE)
 
 # lat <- c(37, 41.5) #define our map's ylim
 # lon <- c(-81, -74.1) #define our map's xlim
 # center = c(mean(lat), mean(lon))  #tell what point to center on
 # myLocation<-c(mean(lat), mean(lon))
-# myLocation<-c(40, -82, 49,-67.1)
-myLocation<-"Shenandoah, Virginia"
+myLocation<-c(-79,37.95,-78.1,39.05)
+myLocation<-"Elkton, Virginia" #"Shenandoah, Virginia"
 
 ##All the sites
-myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom=7)
+myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE)
+#zoom = 7 captures all points, zoom=8 loses 11 USGS sites, zoom=9 loses 34 USGS sites
 pdf(file="plots/site_map.pdf")
-ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = SitesHUC2, color="darkred",size = 3)+
-  geom_point(aes(x = Lon_n83, y = Lat_n83), data = fishsiteDf, color="black",size = 2)
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = gagedsites_BC, color="darkred",size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)
 dev.off()
 
-##Just the 29/54 I'm using
-LL1<-Sites_U["LAT_GAGE","LNG_GAGE"]
-USGS_BC1$type<-"USGS"
-fishSC1$type<-"fish"
-justSites<-rbind(USGS_BC1,fishSC1)
-
-myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom=7)
-pdf(file="plots/site_map2.pdf")
-ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = Sites_U, color="darkred",size = 3)+
-  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = Sites_F, color="black",size = 2)
-dev.off()
-
+#### With regression results ####
 ##Map LNSE of gaged sites
 pdf(file="plots/LNSE_map.pdf")
 ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE,col=meLNSE), data = USGS_BC1,size = 3)+
   scale_colour_gradientn(colours =rainbow(4))
 dev.off()
 
-USGS_BC1
 
 #### All LF covariates ####
 pairs(~log(min7day) + log(totprecip) + log(L1totprecip) + 

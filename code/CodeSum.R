@@ -29,8 +29,7 @@ source(file="code/Combine.R")
 #source(file="code/Explore.R")
 
 ## Develop Flow prediction models##
-#source(file="code/SRegRegLow.R")
-#source(file="code/RRegHigh.R")
+#source(file="code/PredFlows.R")
 
 ## Predict seasonal HFs and LFs at ungaged fish sites##
 
@@ -40,3 +39,6 @@ source(file="code/Combine.R")
 
 ##Run models in a Baysian framework
 #MyKanno
+
+#Attempting to install climdiv to get PSDI Palmer drought
+install.packages("climdiv", repos = "http://ulmo.ucmerced.edu/data/R/climdiv/", type="source")

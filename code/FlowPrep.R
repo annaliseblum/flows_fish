@@ -5,6 +5,15 @@
 
 library(DataCombine)
 library(ggplot2)
+#### 1 - clean data and bind USGS and UVA data together
+#### 2 - Subset for sites with long enough records and find MA-FDCs for all of the sites
+#### 3 - Metric 1: Average seasonal flows
+#### 4 - Metric 2: Dummy variable for drought or flood
+#### 5 - Metric 3: Magnitude (Intensity/Severity) LF and HFs
+#### 6 - Metric 4: Duration: days below .05 percentile MA-FDC or above .95 MA-FDC
+#### 7 - Merge Metrics datasets
+#### 8 - Basin Characteristic cleaning
+#### 9 - Merge flows and Basin Characteristics
 
 #load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
 USGSdaily<-rawDailyData
