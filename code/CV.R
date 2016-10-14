@@ -1,7 +1,12 @@
 ##Cross Validation
-##August 19, 2016
+###FOR Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
+### Annalise G Blum
+##Created August 19, 2016; Last modified: Oct 14, 2016
+##Data sets created in this file: 
 
-##first for frequentist model: A.FWC_RR
+##first for frequentist model: Need file with all flow predictions for fish sites
+
+S.Fish$AvgPreds
 
 save(A.FWC_RR,file="output/A.FWC_RR.rdata")
 load("output/A.FWC_RR.rdata")
