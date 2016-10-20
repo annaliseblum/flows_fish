@@ -8,17 +8,73 @@ load("output/A.FlowW.rdata") #Weather for 50 Gaged sites
 load("output/A.Fish.rdata") #Annual fish data
 load("output/sflow.rdata") #Seasonal flow data
 load("output/aDAYMET.rdata") #weather - Annual
-load("output/gagedsites_BC.data")# gages Basin Chars
+load("output/gagedsites_BC.rdata")# gages Basin Chars
 load("output/fishSC.rdata")
+
+load("output/fish_YAbu.rdata")
+
+
+###Prep for Plots
+##Collapse to ANNUAL level to get which seasonal min7day is the minimum among the seasons
+aflow <- aggregate(sflow$min7day,by=list(sflow$site_no, sflow$Nyear),FUN=min)
+names(aflow)<-c("site_no","Nyear","min7day")
+Aflow<-merge(aflow,sflow,by=c("site_no","Nyear","min7day"))
+Aflow$seasonnames<-"NA"
+Aflow$seasonnames[Aflow$Nseason==1]<-"summer"
+Aflow$seasonnames[Aflow$Nseason==2]<-"fall"
+Aflow$seasonnames[Aflow$Nseason==3]<-"winter"
+Aflow$seasonnames[Aflow$Nseason==4]<-"spring"
+
+Aflow$seasonnames<-as.factor(Aflow$seasonnames)
+
+A.Flows<-A.FlowW
+length(unique(A.Flows$site_no)); length(unique(A.Fish$site_no))
+names(A.Flows)
+names(A.Fish)
+
+Sites_U.w<-A.Flows[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+                     "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
+                     "MinTwinter","type")] #already have a type variable
+
+Sites_F.w<-A.Fish[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+                    "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
+                    "MinTwinter")]
+Sites_F.w$type<-"fish" #have to add type var
+
+Site_Comp<-rbind(Sites_U.w,Sites_F.w)
+#Site_Comp$type<-as.factor(Site_Comp$type) #should I do this??
+#Years<-aggregate(Site_Comp$site_no,by=list(Site_Comp$site_no),FUN=length) #this doesn't work, they are all 29
+
+##if run FlowPrep, can use rec.lengths
+rec.lengths$yearsofflow<-rec.lengths$daysofflow/365
+rec.lengths$daysofflow<-NULL
+names(rec.lengths)<-c("site_no","years")
+#add site type and UVA to those site names
+for (i in 1:length(rec.lengths$site_no)){
+  if (nchar(rec.lengths$site_no[i])==4)
+    rec.lengths$site_no[i]=paste("UVA_",rec.lengths$site_no[i],sep="")
+}
+
+#if run FishPrep
+fish_YAbu1<-fish_YAbu[complete.cases(fish_YAbu),]
+FishRecLeng<-aggregate(fish_YAbu1$site_no,by=list(fish_YAbu1$site_no),FUN=length) #this doesn't work, they are all 29
+names(FishRecLeng)<-c("site_no","years")
+
+#rbind
+AllRecLeng<-rbind(rec.lengths,FishRecLeng)
+
+SiteCompNew<-merge(Site_Comp,AllRecLeng,by="site_no")
+unique(Site_Comp$site_no)
+unique(AllRecLeng$site_no)
 
 #### Flows plots ####
 
-##Correlation in flow metrics
+##Correlation in flow metrics -THIS ISN'T WORKING FOR SOME REASON
 library(corrgram)
 
 dim(sflow)
 length(unique(sflow$site_no)) #5 UVA + 45 USGS
-
+names(sflow)
 pdf("plots/Flow_correlation.pdf")
 corrgram(sflow[,8:15], order=TRUE, lower.panel=panel.cor,
          upper.panel=panel.pts, text.panel=panel.txt,
@@ -35,17 +91,7 @@ data$siteNDX<-as.numeric(as.factor(data$site_no))
 #   scale_y_continuous(limits = c(0,100))
 
 #annual LFs occur during which seasons? 
-##Collapse to ANNUAL level to get which seasonal min7day is the minimum among the seasons
-aflow <- aggregate(sflow$min7day,by=list(sflow$site_no, sflow$Nyear),FUN=min)
-names(aflow)<-c("site_no","Nyear","min7day")
-Aflow<-merge(aflow,sflow,by=c("site_no","Nyear","min7day"))
-Aflow$seasonnames<-"NA"
-Aflow$seasonnames[Aflow$Nseason==1]<-"summer"
-Aflow$seasonnames[Aflow$Nseason==2]<-"fall"
-Aflow$seasonnames[Aflow$Nseason==3]<-"winter"
-Aflow$seasonnames[Aflow$Nseason==4]<-"spring"
 
-Aflow$seasonnames<-as.factor(Aflow$seasonnames)
 pdf("plots/TimingLFs.pdf") #
 ggplot(data=Aflow, aes(x=seasonnames, y=min7day))+stat_summary(fun.y=length, geom="bar")+
   labs(x="", y="number of min7day flows in season", title="Timing of Annual 7day minimum flows") 
@@ -123,22 +169,6 @@ pairs(~Pfall + Pspring + Psummer + Pwinter + MaxTfall + MaxTspring + MaxTsummer 
 dev.off()
 
 #### Paired weather Comparison ####
-A.Flows<-A.FlowW
-length(unique(A.Flows$site_no)); length(unique(A.Fish$site_no))
-names(A.Flows)
-names(A.Fish)
-
-Sites_U.w<-A.Flows[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
-                     "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
-                     "MinTwinter","type")] #already have a type variable
-
-Sites_F.w<-A.Fish[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
-                     "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
-                     "MinTwinter")]
-Sites_F.w$type<-"fish" #have to add type var
-
-Site_Comp<-rbind(Sites_U.w,Sites_F.w)
-Site_Comp$type<-as.factor(Site_Comp2$type)
 
 #parallel time series
 ggplot(Site_Comp, aes(x=as.factor(Nyear), y=Pwinter)) + #, color=as.factor(fish_site))
@@ -160,14 +190,20 @@ summary(Site_Comp[Site_Comp$type=="UVA",])
 
 #### Basin Characteristics Comparison ####
 
-p1=ggplot(Site_Comp, aes(factor(type), DA_SQKM)) + geom_boxplot()+ labs(title = "Drainage area (km2)",x="",y="km2")+
-  scale_y_continuous(limits = c(0,500))
+p1=ggplot(Site_Comp, aes(factor(type), DA_SQKM)) + geom_boxplot()+ labs(title = "Drainage area (km2)",x="",y="km2")
 p2=ggplot(Site_Comp, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="") #no data for UVA
 p3=ggplot(Site_Comp, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="") #no data for UVA
 p4=ggplot(Site_Comp, aes(factor(type), Elev_m)) + geom_boxplot()+ labs(title = "Elevation (m)",x="",y="")
 
 pdf("plots/Site_comparison.pdf") #
 multiplot(p1, p2, p3, p4, cols=2)
+dev.off()
+
+
+p5=ggplot(SiteCompNew, aes(factor(type), years)) + geom_boxplot()+ labs(title = "Record Length (years)",x="",y="")
+
+pdf("plots/Site_comparisonDA_Elev.pdf") #
+multiplot(p1, p4, p5, cols=3)
 dev.off()
 
 #### Maps ####
@@ -188,10 +224,11 @@ myLocation<-c(-79,37.95,-78.1,39.05)
 myLocation<-"Elkton, Virginia" #"Shenandoah, Virginia"
 
 ##All the sites
-myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE)
+myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE) #,zoom = 7
 #zoom = 7 captures all points, zoom=8 loses 11 USGS sites, zoom=9 loses 34 USGS sites
-pdf(file="plots/site_map.pdf")
-ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = gagedsites_BC, color="darkred",size = 3)+
+pdf(file="plots/site_mapzoomed.pdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = gagedsites_BC[gagedsites_BC$type=="USGS",], color="darkred",size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = gagedsites_BC[gagedsites_BC$type=="UVA",], color="blue",size = 3)+
   geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)
 dev.off()
 

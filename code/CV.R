@@ -1,7 +1,7 @@
 ##Cross Validation
 ###FOR Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
 ### Annalise G Blum
-##Created August 19, 2016; Last modified: Oct 14, 2016
+##Created August 19, 2016; Last modified: Oct 18, 2016
 ##Data sets created in this file: 
 
 ##first for frequentist model: Need file with all flow predictions for fish sites

@@ -1,45 +1,49 @@
-##NN DAR LF prediction
-##(nearest neighbor drainage area ratio prediction)
-##July 15, 2016
+##NN DAR (nearest neighbor drainage area ratio prediction) daily flows prediction
+###Annalise Blum
+#Created:July 15, 2016  Updated: Oct 20,2016
+##Data NEEDED for this file: "output/gagedsites_BC.rdata"
+##Data sets created in this file:
 
-library(geoR) 
-library(fossil)
-library(plyr)
+library(geoR);library(fossil); library(plyr)
 
-load("output/AGBSites.rdata")
-load("output/fish_sitesLL.rdata")
-fishsites <- read.csv("YK/WSarea_forKanno.csv")
+#### 1 - Load data sets
 
-load("output/SitesHUC2LL.rdata")
-load("output/sflow.rdata")
 
-#merge Lat and Long with seasonal min flows to standardize them by sq miles
-sum(as.numeric(SitesHUC2$DRAIN_SQKM)<50) #15 are under 50km2 which ideally would be the only ones used for regional regression
-SitesHUC2$DRAIN_SQMI<-as.numeric(SitesHUC2$DRAIN_SQKM)/(1.60934^2)
+#### 1 - Load data sets ####
+load("output/UVA_BC.rdata") #UVA gages Basin Chars
+load("output/USGS_BC.rdata")#USGS gages Basin Chars
 
-Sflows<-merge(SitesHUC2,sflow,by="site_no")
-Sflows$Smin7day<-Sflows$min7day/Sflows$DRAIN_SQMI
-Sflows<-Sflows[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","year","season","Smin7day")]
-GAGEDLL<-SitesHUC2LL[c("LONG","LAT")]
-FishLL<-fish_sitesLL[c("LONG","LAT")]
+# load("output/AGBSites.rdata")
+# load("output/fish_sitesLL.rdata")
+# fishsites <- read.csv("YK/WSarea_forKanno.csv")
+# load("output/SitesHUC2LL.rdata")
+# load("output/sflow.rdata")
+
+#### 2 - Prep data sets ####
+
+#pull Lat and Long
+UVA_LL<-UVA_BC[c("LAT_GAGE","LNG_GAGE")]
+USGS_LL<-USGS_BC[c("LAT_GAGE","LNG_GAGE")]
+
+# Sflows<-merge(SitesHUC2,sflow,by="site_no")
+# Sflows$Smin7day<-Sflows$min7day/Sflows$DRAIN_SQMI
+# Sflows<-Sflows[c("site_no","LAT_GAGE","LNG_GAGE","DRAIN_SQMI","year","season","Smin7day")]
 
 #to find the nearest USGS gage to the fish sampling sites:
 library(rgeos)
 library(sp)
-fish1sp <- SpatialPoints(FishLL)
-usgs2sp <- SpatialPoints(GAGEDLL)
-FishLL$nearest_usgsG <- apply(gDistance(usgs2sp, fish1sp, byid=TRUE), 1, which.min) #ordering confusing...
-GAGEDLL$NDX<-1:nrow(GAGEDLL)
-names(GAGEDLL)<-c("G_LNG","G_LAT","nearest_usgsG")
+UVA_sp <- SpatialPoints(UVA_LL)
+USGS_sp <- SpatialPoints(USGS_LL)
+UVA_LL$nearest_usgsG <- apply(gDistance(USGS_sp, UVA_sp, byid=TRUE), 1, which.min) #returns entry number of closest
+USGS_LL$NDX<-1:nrow(USGS_LL)
+names(USGS_LL)<-c("USGS_LNG","USGS_LAT","nearest_usgsG")
 
 #merge these together
-NN<-merge(FishLL,GAGEDLL,by="nearest_usgsG")
+NN<-merge(UVA_LL,USGS_LL,by="nearest_usgsG")
 
 #merge back in the site numbers and other info:
-fishDA<-fishsites[c("SiteID","WatershedArea_ha","lattitude","longitude")]
-fishDA$DA_SQMI<-fishDA$WatershedArea_ha/258.999
-fishDA<-fishDA[c("SiteID","DA_SQMI")]
-names(fishDA)[1]<-"site_no"
+#fishDA<-UVA_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+UVA_BC<-UVA_DA[c("site_no","DA_SQKM")]
 
 fishDA2<-merge(fish_sitesLL,NN,by=c("LAT","LONG"))
 fishDA3<-merge(fishDA2,fishDA,by="site_no") #merge in DA of sites

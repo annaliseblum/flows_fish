@@ -1,7 +1,8 @@
 ##Flow data prep and explore
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
 ### Annalise G Blum
-##Data sets created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics; "output/gagedsites_BC.data"
+##Data sets created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics; 
+"output/gagedsites_BC.data"
 
 library(DataCombine)
 library(ggplot2)
@@ -64,7 +65,7 @@ daily<-rbind(USGSdaily,UVA_daily)
 length(unique(daily$site_no)) #49 USGS sites + 5 UVA sites =54
 
 #remove years without all 365 days of flow data
-YearTally <- aggregate(daily$cfs,by=list(daily$site_no, daily$year),FUN=length) #need to drop years without 365 days of data
+YearTally <- aggregate(daily$cfs,by=list(daily$site_no, daily$year),FUN=length) #drop years without 365 days of data
 names(YearTally)<-c("site_no","year","daysperyr")
 sum(YearTally$daysperyr<365) #44 years with <365 flow values
 df1<-data.frame(merge(daily, YearTally, by = c('site_no','year'))) #merge with flow data
@@ -123,7 +124,7 @@ createMAFDC<-function(x) { #x=dataframe with 2 columns: year and cfs
 }
 #createMAFDC(test)
 #then apply function to list to make each into a matrix of years X days of the year
-MAFDCs<-t(as.data.frame(lapply(L_forMAFDC,createMAFDC))) #transpose application of createMAFDC to get sites x "day-tiles"
+MAFDCs<-t(as.data.frame(lapply(L_forMAFDC,createMAFDC))) #transpose application of createMAFDC
 
 #loop through site_nos to remove leading X for USGS sites:
 for (i in 1:length(rownames(MAFDCs))){
@@ -292,7 +293,7 @@ sdata<-merge(sdata0,S_Duration,by=c("site_no", "Nyear","Nseason"))
 head(sdata); tail(sdata); dim(sdata); str(sdata) #summary(sdata)
 
 #add site type and UVA to those site names
-sdata$type<-ifelse(nchar(sflow$site_no)==4,"UVA","USGS")
+sdata$type<-ifelse(nchar(sdata$site_no)==4,"UVA","USGS")
 #loop through site_nos to add "UVA_" to UVA sites:
 for (i in 1:length(sdata$site_no)){
   if (nchar(sdata$site_no[i])==4) #(sdata$type=="UVA)

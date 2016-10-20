@@ -14,8 +14,6 @@ standard<-function(x) { #x=time series of 7day LFs
   return(stand.var)
 }
 
-
-
 ##7Q10 function
 
 comp7Q10<-function(x) { #x=time series of 7day LFs
@@ -63,6 +61,32 @@ ResidPlots<-function(x){ #pull out the ratios from the Lmoments list of site lis
   par(mfrow=c(1,1),mar=rep(4,4))  
 }
 
+##New residals
+
+ResidPlots2<-function(x){ #pull out the ratios from the Lmoments list of site lists of flows
+  par(mfrow = c(1, 2),mar=c(4,4,3,4)) # c(bottom, left, top, right) 
+  
+  if (class(x)=="lm") {
+    resid<-x$resid
+  } else {
+    resid<-resid(x)
+  }
+  #Plot 1 Normal probability Plot
+  qqnorm(resid,xlab="Residual",ylab="Percent",main="Normal Probability Plot")
+  qqline(resid) 
+  grid()
+  usr <- par("usr") ##  par( "usr" ) returns a vector containing xleft, xright, ybottom, ytop.
+  if(length(resid)<5000){
+    text(usr[1], usr[4],bquote("S-W p=" ~.(round(shapiro.test(resid)$p.value,digits=4))),adj=c(-.2, 1.5))
+  }
+  
+  ##plot 2 residual versus Fits
+  plot(predict(x),resid,xlab="Fitted Value",ylab="Residual",main="Versus Fits")
+  abline(0,0)
+  
+  #make default one plot again
+  par(mfrow=c(1,1),mar=rep(4,4))  
+}
 
 ##FROM http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_%28ggplot2%29/
 # Multiple plot function

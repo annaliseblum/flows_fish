@@ -73,44 +73,54 @@ save(A.FishPreds,file="output/A.FishPreds.rdata")
 
 names(A.FishPreds)
 #### 3 - Standardize variables ####
+#this should be by site
+
+#from function file: standard
+names(A.FishPreds)
+A.FishPreds$StdPfall<-standard(A.FishPreds$Pfall)
 
 #### 4 - Predict fish outcomes ####
-#### OLS linear regression
-fit<-lm(EstYOYAbu~Spredsfall+Spredsspring+Spredssummer+Spredswinter+
-          Pfall + Pspring + Psummer + Pwinter+
-          MaxTfall + MaxTspring + MaxTsummer + MaxTwinter
-        ,data=A.FishPreds)
-summary(fit)
 
+#benchmark: can I do better than Kanno et al 2016 with just weather??
+fitK<-lm(EstYOYAbu ~ Pfall + Pspring + Psummer + Pwinter+
+           MaxTfall + MaxTspring + MaxTsummer + MaxTwinter+
+           DA_SQKM+LAT_GAGE+LNG_GAGE+Slope_pct+Aspect_deg+Elev_m #Kanno
+         ,data=A.FishPreds)
+summary(fitK)
+
+#### OLS linear regression - SEASONAL #####
 fitP<-lm(EstYOYAbu ~ Spredsfall+Spredsspring+Spredssummer+Spredswinter #just my seasonal flow estimate vars
            ,data=A.FishPreds)
 summary(fitP)
 
-fitK<-lm(EstYOYAbu ~ Pfall + Pspring + Psummer + Pwinter+
-           MaxTfall + MaxTspring + MaxTsummer + MaxTwinter #just Kanno P and T
-         ,data=A.FishPreds)
-summary(fitK)
-
-fitPT<-lm(EstYOYAbu ~ Spredsfall+Spredsspring+Spredssummer+Spredswinter+
+fitS<-lm(EstYOYAbu ~ Spredsfall+Spredsspring+Spredssummer+Spredswinter+
            MaxTfall + MaxTspring + MaxTsummer + MaxTwinter #just my Seasonal flow vars + Temp
          ,data=A.FishPreds)
-summary(fitPT)
+summary(fitS)
+
+#### OLS linear regression - MAGNITUDE #####
 
 fitMT<-lm(EstYOYAbu ~ Mpredssummer+Mpredsfall+Mpredswinter+Mpredsspring+ #just my magnitude flow vars + Temp
             MaxTfall + MaxTspring + MaxTsummer + MaxTwinter 
           ,data=A.FishPreds)
 summary(fitMT)
 
-####FIX THESE
-fitMT<-lm(EstYOYAbu ~ Mpredssummer+Mpredsfall+Mpredswinter+Mpredsspring+ #My dummy flow vars + Temp
-            MaxTfall + MaxTspring + MaxTsummer + MaxTwinter 
-          ,data=A.FishPreds)
-summary(fitMT)
 
-fitMT<-lm(EstYOYAbu ~ Mpredssummer+Mpredsfall+Mpredswinter+Mpredsspring+ #My duration flow vars + Temp
-            MaxTfall + MaxTspring + MaxTsummer + MaxTwinter 
+fitMBC<-lm(EstYOYAbu ~ Mpredssummer+Mpredsfall+Mpredswinter+Mpredsspring+
+            MaxTfall + MaxTspring + MaxTsummer + MaxTwinter+
+             DA_SQKM+LAT_GAGE+LNG_GAGE+Slope_pct+Aspect_deg+Elev_m
           ,data=A.FishPreds)
-summary(fitMT)
+summary(fitMBC)
+
+
+
+stargazer(fitMK,fitPT,fitMT,
+          title="Fish Abundance",
+          align=T,star.char = c("", "", ""),omit.table.layout = "n",
+          #dep.var.labels = "", #model.names = FALSE,
+          column.labels = c("Just weather","Seasonal preds","Magnitude preds"),
+          no.space=T,dep.var.caption = "", report = "vct*", digits=2,
+          model.numbers = F,type="text",out="output/regTXT/FishAbuComp.txt")
 
 
 #### 5 - from old file ####
