@@ -1,7 +1,8 @@
 ##fish data prep
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
 ### Annalise G Blum
-##Created:July 18, 2016, last modified: Sept 28,2016
+##Created:July 18, 2016, last modified: Oct 24,2016
+##Data NEEDED for this file: "output/countAr.rdata"
 ##Data set created in this file: "output/fishSC.rdata"
 
 library(reshape)
@@ -71,6 +72,8 @@ names(fishSC)<-c("site_no","DA_SQKM","HUC8","LAT_GAGE","LNG_GAGE","REACH_CODE",
                   "Slope_pct","Aspect_deg","Elev_m")
 
 fishSC$LNG_GAGE.T<- fishSC$LNG_GAGE+100
+
+fishSC$site_no<-as.character(fishSC$site_no)
 
 save(fishSC,file="output/fishSC.rdata")
 

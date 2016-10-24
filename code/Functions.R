@@ -14,6 +14,12 @@ standard<-function(x) { #x=time series of 7day LFs
   return(stand.var)
 }
 
+#which min not zero
+minnotzero<-function(x) { #x=dataframe with 2 columns: year and cfs
+  min<-which.min(x[x>0]) #find minimum where min is greater than zero
+  return(min)
+}
+
 ##7Q10 function
 
 comp7Q10<-function(x) { #x=time series of 7day LFs

@@ -29,6 +29,8 @@ USGSdaily$day<-as.integer(format(USGSdaily$Date, "%d")) #extract day variable
 USGSdaily$month<-as.integer(format(USGSdaily$Date, "%m")) #extract month variable 
 USGSdaily$year<-as.integer(format(USGSdaily$Date, "%Y")) #extract year variable 
 
+save(USGSdaily,file="output/USGSdaily.rdata")
+
 #how many zero flows?
 sum(USGSdaily$cfs==0)/length(USGSdaily$cfs) # 0.00067
 
@@ -99,6 +101,9 @@ df3<-data.frame(merge(df2, rec.lengths, by = c('site_no'))) #merge with flow dat
 #drop sites with less than 3 years of flow data
 df4<-df3[df3$daysofflow>3*365,] #remove sites with less than 3 (before 15 but lost too many) years of data
 length(unique(df4$site_no)) #50 sites remain!!
+
+#create a list of sites
+USGS_sites<-as.data.frame(unique(df4$site_no[df4$type=="USGS"])); names(USGS_sites)<-"site_no"
 
 #how many zero flows across both USGS and UVA sites?
 sum(df4$cfs==0)/length(df4$cfs) # 0.0022
@@ -315,6 +320,7 @@ names(USGS_BC)<-c("site_no","DA_SQKM","HUC02","LAT_GAGE","LNG_GAGE","REACH_CODE"
                   "Slope_pct","Aspect_deg","Elev_m","BFI_AVE","TOPWET")
 USGS_BC$DA_SQKM<-as.numeric(USGS_BC$DA_SQKM)
 USGS_BC$type<-"USGS"
+USGS_BC<-merge(USGS_sites,USGS_BC,by="site_no") #just keep the 45 sites with at least 3 years of full daily data
 save(USGS_BC,file="output/USGS_BC.rdata")#USGS gages Basin Chars - cleaned
 
 #UVA

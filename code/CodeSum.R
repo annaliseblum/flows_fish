@@ -3,6 +3,13 @@
 
 #rm(list = setdiff(ls(), lsf.str())) #clears all variables except functions
 
+#load packages:
+library(geoR);library(fossil); library(plyr); library(rgeos);library(sp); library("ggmap")
+library(DataCombine); library(ggplot2)
+
+#set plot area
+par(mfrow=c(1,1))
+
 ##Run functions file
 source(file="code/Functions.R")
  
@@ -28,11 +35,11 @@ source(file="code/Combine.R")
 #Explore - make comparison plots #
 #source(file="code/Explore.R")
 
-## Develop Flow prediction models##
-#source(file="code/PredFlows.R")
+## Predict time series of daily flows - NN DAR ##
+#source(file="code/NN_DAR.R")
 
-## Predict seasonal HFs and LFs at ungaged fish sites##
-#source(file="code/FishPredFlows.R")
+## Estimate extreme flow metrics from NN-DAR predicted daily flows ##
+#source(file="code/NNmetricsPred.R")
 
 ## Compare GOF of fish prediction models ##
 #CV
@@ -40,5 +47,11 @@ source(file="code/Combine.R")
 ##Run models in a Baysian framework
 #MyKanno
 
+#### OLD ####
 #Attempting to install climdiv to get PSDI Palmer drought
-install.packages("climdiv", repos = "http://ulmo.ucmerced.edu/data/R/climdiv/", type="source")
+#install.packages("climdiv", repos = "http://ulmo.ucmerced.edu/data/R/climdiv/", type="source")
+
+## Develop Flow prediction models##
+#source(file="code/PredFlows.R")
+## Predict seasonal HFs and LFs at ungaged fish sites##
+#source(file="code/FishPredFlows.R")
