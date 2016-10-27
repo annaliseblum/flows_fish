@@ -89,12 +89,15 @@ fitK<-lm(EstYOYAbu ~ Pfall + Pspring + Psummer + Pwinter+
 summary(fitK)
 
 #### OLS linear regression - SEASONAL #####
-fitP<-lm(EstYOYAbu ~ Spredsfall+Spredsspring+Spredssummer+Spredswinter #just my seasonal flow estimate vars
+fitP<-lm(EstYOYAbu ~ AvgQsummer+AvgQfall+AvgQwinter+AvgQspring #just my seasonal flow estimate vars
            ,data=A.FishPreds)
 summary(fitP)
 
-fitS<-lm(EstYOYAbu ~ Spredsfall+Spredsspring+Spredssummer+Spredswinter+
-           MaxTfall + MaxTspring + MaxTsummer + MaxTwinter #just my Seasonal flow vars + Temp
+fitS<-lm(EstYOYAbu ~ AvgQsummer+AvgQfall+AvgQwinter+AvgQspring+ 
+           Floodpredwinter+Floodpredspring+#Floodpredsummer+Floodpredfall+
+           #Droughtpredsummer+Droughtpredsfall+
+           MaxTfall + MaxTspring + MaxTsummer + MaxTwinter+
+           DA_SQKM+LAT_GAGE+LNG_GAGE+Slope_pct+Aspect_deg+Elev_m #just my Seasonal flow vars + Temp
          ,data=A.FishPreds)
 summary(fitS)
 

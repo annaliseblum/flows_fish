@@ -10,9 +10,8 @@ load("output/sflow.rdata") #Seasonal flow data
 load("output/aDAYMET.rdata") #weather - Annual
 load("output/gagedsites_BC.rdata")# gages Basin Chars
 load("output/fishSC.rdata")
-
 load("output/fish_YAbu.rdata")
-
+load("output/USGSdaily.rdata")
 
 ###Prep for Plots
 ##Collapse to ANNUAL level to get which seasonal min7day is the minimum among the seasons
@@ -46,14 +45,15 @@ Site_Comp<-rbind(Sites_U.w,Sites_F.w)
 #Years<-aggregate(Site_Comp$site_no,by=list(Site_Comp$site_no),FUN=length) #this doesn't work, they are all 29
 
 ##if run FlowPrep, can use rec.lengths
-rec.lengths$yearsofflow<-rec.lengths$daysofflow/365
-rec.lengths$daysofflow<-NULL
-names(rec.lengths)<-c("site_no","years")
-#add site type and UVA to those site names
-for (i in 1:length(rec.lengths$site_no)){
-  if (nchar(rec.lengths$site_no[i])==4)
-    rec.lengths$site_no[i]=paste("UVA_",rec.lengths$site_no[i],sep="")
-}
+
+#how many years of data per site?
+rec.lengths<-aggregate(USGSdaily$cfs,by=list(USGSdaily$site_no),length)
+names(rec.lengths)<-c("site_no","daysofflow")
+sort(rec.lengths$daysofflow/365)
+df3<-data.frame(merge(USGSdaily, rec.lengths, by = c('site_no'))) #merge with flow data
+
+#drop sites with less than 3 years of flow data
+dfFullRec<-df3[df3$daysofflow>28*365,] #remove sites with less than 3 (before 15 but lost too many) years of data
 
 #if run FishPrep
 fish_YAbu1<-fish_YAbu[complete.cases(fish_YAbu),]
@@ -66,6 +66,10 @@ AllRecLeng<-rbind(rec.lengths,FishRecLeng)
 SiteCompNew<-merge(Site_Comp,AllRecLeng,by="site_no")
 unique(Site_Comp$site_no)
 unique(AllRecLeng$site_no)
+
+load("output/gagedsites_BC.rdata")# gages Basin Chars
+UVA_dailyBC<-merge(UVA_daily,gagedsites_BC,by="site_no")
+UVA_dailyBC$cfsperKM2<-UVA_dailyBC$UVAobs_cfs/UVA_dailyBC$DA_SQKM
 
 #### Flows plots ####
 
@@ -199,7 +203,6 @@ pdf("plots/Site_comparison.pdf") #
 multiplot(p1, p2, p3, p4, cols=2)
 dev.off()
 
-
 p5=ggplot(SiteCompNew, aes(factor(type), years)) + geom_boxplot()+ labs(title = "Record Length (years)",x="",y="")
 
 pdf("plots/Site_comparisonDA_Elev.pdf") #
@@ -232,7 +235,38 @@ ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = gagedsites_BC[ga
   geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)
 dev.off()
 
-#### With regression results ####
+##Just USGS sites with at least 28 years of flow data dfFullRec
+#need to merge Lat and Long in dfFullRec
+FullRecSites<-as.data.frame(unique(dfFullRec$site_no))
+colnames(FullRecSites)<-"site_no"
+FullRec<-merge(gagedsites_BC,FullRecSites,by="site_no")
+
+FullRecLLcrop<-FullRec[FullRec$LNG_GAGE< -78 &FullRec$LNG_GAGE> -79,]
+FullRecLLcrop<-FullRecLLcrop[FullRecLLcrop$LAT_GAGE> 37.75 &FullRecLLcrop$LAT_GAGE< 39.5,]
+length(unique(FullRecLLcrop$site_no))
+
+##Map 3 closest USGS sites to UVA sites: 01630700 02028500 01665500
+NNUVA_USGS<-gagedsites_BC[gagedsites_BC$site_no=="01630700"|gagedsites_BC$site_no=="02028500"
+                          |gagedsites_BC$site_no=="01665500",]
+
+##All the sites
+myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom = 8) #
+#zoom = 7 captures all points, zoom=8 loses 11 USGS sites, zoom=9 loses 34 USGS sites
+pdf(file="plots/site_mapzoomed.pdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = FullRecLLcrop, color="darkred",
+                        size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = NNUVA_USGS, color="blue",size = 2)+pointLabels
+dev.off()
+
+# geom_dl(data = df, 
+#         aes(label = labels), 
+#         list(dl.trans(y = y + 0.3), "boxes", cex = .8, fontface = "bold"))
+
+rec.lengths[gagedsites_BC$site_no=="01630700"|gagedsites_BC$site_no=="02028500"
+            |gagedsites_BC$site_no=="01665500",]
+
+#### With regression results ##
 ##Map LNSE of gaged sites
 pdf(file="plots/LNSE_map.pdf")
 ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE,col=meLNSE), data = USGS_BC1,size = 3)+
@@ -240,7 +274,7 @@ ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE,col=meLNSE), data = USGS_
 dev.off()
 
 
-#### All LF covariates ####
+#### All LF covariates ##
 pairs(~log(min7day) + log(totprecip) + log(L1totprecip) + 
         log(L3totprecip) + log(L4totprecip) + log(L1avgtmax.T),
       data=fall.WFB, lower.panel = panel.smooth,
@@ -249,8 +283,7 @@ cor(fall.WFB$L1avgtmax.T,fall.WFB$L4avgtmax.T)
 
 #site characteristicx + log(DRAIN_SQMI) + log(LAT_GAGE) + log(LNG_GAGE.T) + 
 
-
-#### 3-D plots ###
+#### 3-D plots ####
 require(akima); library(rworldmap)
 d3plot1 <- with(fall.WFB, interp(x= avgtmax , y=totprecip, z=min7day, duplicate="mean"))
 filled.contour(d3plot1, color=rainbow,
@@ -283,3 +316,65 @@ filled.contour(d3plot2, color=rainbow, xlab="Slope",ylab="log Drainage area",
 
 
 points(fall.WFB$Slope_pct, fall.WFB$Elev_m,add=T)
+
+#### new on oct 26th -  How similar are USGS NN sites cfs=/km2 to one another? NN_ALL$cfsperKM2 ####
+#NNs to fish sites: UVA_PAIN UVA_WOR1 UVA_NFDR UVA_STAN UVA_PINE 01630700
+#NN with full 29 year record: 01632900 01634500 02028500 (01632000)
+
+names(UVA_dailyBC)
+ggplot(UVA_dailyBC, aes(x=Date, y=cfsperKM2))+
+  geom_line(aes(y = cfsperKM2, colour = as.factor(UVA_dailyBC$site_no)))+
+  theme(legend.position = "bottom")
+  #+scale_y_continuous(limits = c(0,35)) + 
+  #+scale_x_date(limits = c(as.Date("2000-1-1"), as.Date("2004-1-1")))
+
+#Plot showing the record lengths of the UVA sites
+ggplot(UVA_daily, aes(x=Date, y=as.factor(UVA_daily$site_no)))+
+  geom_line()
+
+##Look at correlation across UVA sites:
+UVA_dailycast <- dcast(UVA_daily, Date ~ site_no,value.var = "UVAobs_cfs") 
+cor(UVA_dailycast[,2],UVA_dailycast[,6],use = "complete.obs")
+UVA_dailycastCC<-UVA_dailycast[complete.cases(UVA_dailycast),]
+
+corrgram(UVA_dailycastCC[,2:6], order=TRUE, #lower.panel=panel.cor, #only works if no NAs?
+         upper.panel=panel.pts, text.panel=panel.txt,
+         diag.panel=panel.minmax,
+         main="Correlation of cfs/km2 UVA sites")
+min(cor(UVA_dailycast[,2:6],use = "complete.obs"))
+
+#merge in DAs to UVA_daily to confirm that dividing through by DA per site doesn't change corr
+load("output/gagedsites_BC.rdata")# gages Basin Chars
+UVA_dailyBC<-merge(UVA_daily,gagedsites_BC,by="site_no")
+UVA_dailyBC$cfsperKM2<-UVA_dailyBC$UVAobs_cfs/UVA_dailyBC$DA_SQKM
+
+#cast wide
+UVA_dailycastPERKM <- dcast(UVA_dailyBC, Date ~ site_no,value.var = "cfsperKM2") 
+
+#corr for standardized flows:
+cor(UVA_dailycastPERKM[,2:6],use = "complete.obs")
+
+##Now also look at the corr with the closest USGS sites
+#Pull relevant sites:
+USGSdaily3cUVA<-USGSdaily[USGSdaily$site_no=="01630700"|USGSdaily$site_no=="02028500"
+          |USGSdaily$site_no=="01665500",]
+USGS3cUVAcast <- dcast(USGSdaily3cUVA, Date ~ site_no,value.var = "cfs") 
+cor(USGS3cUVAcast[,2:4],use = "complete.obs")
+
+#cbind to UVA sites
+merge1<-merge(UVA_dailycastPERKM,USGS3cUVAcast,by="Date")
+cor(merge1[,2:8],use = "complete.obs")
+
+#now look at the 4 sites with full 29 year records - these 3 main 01632900 01634500 02028500
+unique(FullRecLLcrop$site_no) #from map section above
+USGSfullrec<-USGSdaily[USGSdaily$site_no=="01632900"|USGSdaily$site_no=="01634500",] #02028500 already in there
+USGSfullreccast <- dcast(USGSfullrec, Date ~ site_no,value.var = "cfs") 
+cor(USGSfullreccast[,2:3],use = "complete.obs")
+
+#cbind to UVA sites
+merge2<-merge(merge1,USGSfullreccast,by="Date")
+dim(merge2)
+round(cor(merge2[,2:11],use = "complete.obs"),digits=3)
+min(round(cor(merge2[,2:11],use = "complete.obs"),digits=3))
+
+##record lengths UVA_NFDR  UVA_WOR1 UVA_PAIN  UVA_PINE  UVA_STAN

@@ -279,44 +279,47 @@ S.Flow$DurHFPreds<-NA
 
 #####FIX THESE!! - Esp the glm predictions
 #Drought: summer, fall
-glm.DurSum<-lm(LF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
+lm.DurSum<-lm(LF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
                +log(PMonth1)+log(PMonth2)+log(PMonth3)+log(totprecipL1)+log(totprecipL2)+
                  +log(avgtmax.T)+log(avgtmaxL1.T)+log(avgtmaxL2.T)
-               ,data=S.Flow[S.Flow$season=="summer"&S.Flow$type=="USGS",],family="poisson")
+               ,data=S.Flow[S.Flow$season=="summer"&S.Flow$type=="USGS",])
 summary(glm.DurSum)
-S.Flow$DurLFPreds[S.Flow$season=="summer"]<-predict(glm.DurSum,S.Flow[S.Flow$season=="summer",],allow.new.levels = T,type="response") #predict
+S.Flow$DurLFPreds[S.Flow$season=="summer"]<-predict(lm.DurSum,S.Flow[S.Flow$season=="summer",],allow.new.levels = T,type="response") #predict
 
-glm.DurF<-lm(LF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
+lm.DurF<-lm(LF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
              +log(PMonth1)+log(PMonth2)+log(PMonth3)+log(totprecipL1) #+log(totprecipL2)+
                #+log(avgtmax.T)+log(avgtmaxL1.T)+log(avgtmaxL2.T)
              ,data=S.Flow[S.Flow$season=="fall"&S.Flow$type=="USGS",])
 summary(glm.DurF)
-S.Flow$DurLFPreds[S.Flow$season=="fall"]<-exp(predict(glm.DurF,S.Flow[S.Flow$season=="fall",],allow.new.levels = T,type="response")) #predict
+S.Flow$DurLFPreds[S.Flow$season=="fall"]<-exp(predict(lm.DurF,S.Flow[S.Flow$season=="fall",],allow.new.levels = T,type="response")) #predict
 
 #Flood: winter, spring
-glm.DurW<-lm(HF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
+lm.DurW<-lm(HF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
              +log(PMonth1)+log(PMonth2)+log(PMonth3)+log(totprecipL1)+log(totprecipL2)
                #+log(avgtmax.T)+log(avgtmaxL1.T)+log(avgtmaxL2.T)
              ,data=S.Flow[S.Flow$season=="winter"&S.Flow$type=="USGS",])
 summary(glm.DurW)
-S.Flow$DurHFPreds[S.Flow$season=="winter"]<-exp(predict(glm.DurW,S.Flow[S.Flow$season=="winter",],allow.new.levels = T,type="response")) #predict
+S.Flow$DurHFPreds[S.Flow$season=="winter"]<-exp(predict(lm.DurW,S.Flow[S.Flow$season=="winter",],allow.new.levels = T,type="response")) #predict
 
-glm.DurSp<-lm(HF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
+lm.DurSp<-lm(HF_days~log(DA_SQKM)+log(Elev_m)+log(LAT_GAGE)+log(LNG_GAGE.T)
               +log(PMonth1)+log(PMonth2)+log(PMonth3)+log(totprecipL1)+log(totprecipL2)
                 #+log(avgtmax.T)+log(avgtmaxL1.T)+log(avgtmaxL2.T)
               ,data=S.Flow[S.Flow$season=="spring"&S.Flow$type=="USGS",])
 summary(glm.DurSp)
-S.Flow$DurHFPreds[S.Flow$season=="spring"]<-exp(predict(glm.DurSp,S.Flow[S.Flow$season=="spring",],allow.new.levels = T,type="response")) #predict
+S.Flow$DurHFPreds[S.Flow$season=="spring"]<-exp(predict(lm.DurSp,S.Flow[S.Flow$season=="spring",],allow.new.levels = T,type="response")) #predict
 
 #Export regression results
-stargazer(glm.DurSum,glm.DurF,glm.DurW,glm.DurSp,
+stargazer(lm.DurSum,lm.DurF,lm.DurW,lm.DurSp,
           title="days with flow<.05p MA-FDC or flow>.95p MA-FDC)- USGS sites only",
           align=T,
           #dep.var.labels = "", #model.names = FALSE,
           column.labels = c("Summer","Fall","Winter","Spring"),
           no.space=T,dep.var.caption = "", report = "vct*", digits=1,
           model.numbers = F,type="text",out="output/regTXT/DurationRegs.txt")
+
 #### 7 - Merge Metrics Predictions datasets ####
+str(S.Flow)
+
 #### 8 - CV Seasonal####
 SiteList<-unique(S.Flow$site_no)
 USGSsites<-SiteList[1:45]

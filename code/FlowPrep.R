@@ -1,6 +1,6 @@
 ##Flow data prep and explore
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
-### Annalise G Blum
+### Annalise G Blum; Modified Oct 26,2016
 ##Data sets created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics; 
 "output/gagedsites_BC.data"
 
@@ -66,16 +66,16 @@ UVA_daily$type<-"UVA"
 daily<-rbind(USGSdaily,UVA_daily)
 length(unique(daily$site_no)) #49 USGS sites + 5 UVA sites =54
 
-#remove years without all 365 days of flow data
-YearTally <- aggregate(daily$cfs,by=list(daily$site_no, daily$year),FUN=length) #drop years without 365 days of data
-names(YearTally)<-c("site_no","year","daysperyr")
-sum(YearTally$daysperyr<365) #44 years with <365 flow values
-df1<-data.frame(merge(daily, YearTally, by = c('site_no','year'))) #merge with flow data
-df2<-df1[df1$daysperyr>364,] #remove years with less than 365 days of data
-length(unique(df2$site_no)) #53 sites (lost 1 USGS one that didn't have any complete flow years)
-
 #Create new season and year variables
-df2$Nyear<-ifelse(df2$month<6,df2$year-1981,df2$year-1980) #to get years 1-29
+daily$Nyear<-ifelse(daily$month<6,daily$year-1981,daily$year-1980) #to get years 1-29
+
+#remove years without all 365 days of flow data
+YearTally <- aggregate(daily$cfs,by=list(daily$site_no, daily$Nyear),FUN=length) #drop years without 365 days of data
+names(YearTally)<-c("site_no","Nyear","daysperNyr")
+sum(YearTally$daysperNyr<365) #44 years with <365 flow values
+df1<-data.frame(merge(daily, YearTally, by = c('site_no','Nyear'))) #merge with flow data
+df2<-df1[df1$daysperNyr>364,] #remove years with less than 365 days of data
+length(unique(df2$site_no)) #53 sites (lost 1 USGS one that didn't have any complete flow years)
 
 #create season variable
 ##Kanno defines seasons as fall=Aug-Nov, winter=dec-feb, spring=march-may, summer=june-aug
