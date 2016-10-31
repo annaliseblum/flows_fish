@@ -1,11 +1,12 @@
 ## Output Analysis - Yoichiro's full model
-
+##Modified: Oct 27,2016
 #run My_Kanno.R
 
 names(outpaperFull_df)
 
 MeansoutpaperFull<-colMeans(outpaperFull_df)
 
+#### Effects boxplots (Figure 2 in Kanno et al)  ####
 #to replicate Figure 2: (yess)
 summary(outpaperFull_df$`g.0[1,1]`)
 summary(outpaperFull_df$`g.0[2,1]`)
@@ -16,9 +17,92 @@ summary(outpaperFull_df$`g.0[6,1]`)
 summary(outpaperFull_df$`g.0[7,1]`)
 summary(outpaperFull_df$`g.0[8,1]`)
 
+load("~/flows_fish/output/outpaperFull_df.rdata")
 pdf("plots/My_Fig2.pdf") #
+labels=paste(c("Summer Precip","Fall Precip","Winter Precip","Spring Precip","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
 boxplot(outpaperFull_df$`g.0[1,1]`,outpaperFull_df$`g.0[2,1]`,outpaperFull_df$`g.0[3,1]`,outpaperFull_df$`g.0[4,1]`,
-        outpaperFull_df$`g.0[5,1]`,outpaperFull_df$`g.0[6,1]`,outpaperFull_df$`g.0[7,1]`,outpaperFull_df$`g.0[8,1]`)
+        outpaperFull_df$`g.0[5,1]`,outpaperFull_df$`g.0[6,1]`,outpaperFull_df$`g.0[7,1]`,outpaperFull_df$`g.0[8,1]`,
+        xaxt="n", xlab="",ylab="effect size",
+        main="Figure 2 from Kanno et al (2016) - All weather covariates")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
+##Kanno model
+pdf("plots/MyFig2Kanno.pdf") #
+#labels
+labels=paste(c("Summer Low Flow","Fall Low Flow","Winter High Flow","Spring High Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI4$sims.list$g.0[,1,1],outJUI4$sims.list$g.0[,2,1],outJUI4$sims.list$g.0[,3,1],outJUI4$sims.list$g.0[,4,1],
+        outJUI4$sims.list$g.0[,5,1],outJUI4$sims.list$g.0[,6,1],outJUI4$sims.list$g.0[,7,1],outJUI4$sims.list$g.0[,8,1],
+          xaxt="n", xlab="",ylab="effect size",
+        main="Duration of flows (High=above 95%ile; Low= below 5%ile)")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
+####with JAGSUI output
+#to replicate Figure 2: $mean   ..$ g.0     : num [1:8, 1] 0.0786 0.1867 -0.3545 0.0402 -0.0632 ...
+plot(outJUI$mean$g.0)
+boxplot(outJUI$sims.list$g.0[,1,1])
+
+pdf("plots/My_Fig2.pdf") #
+boxplot(outJUI$sims.list$g.0[,1,1],outJUI$sims.list$g.0[,2,1],outJUI$sims.list$g.0[,3,1],outJUI$sims.list$g.0[,4,1],
+        outJUI$sims.list$g.0[,5,1],outJUI$sims.list$g.0[,6,1],outJUI$sims.list$g.0[,7,1],outJUI$sims.list$g.0[,8,1])
+abline(0,0)
+dev.off()
+
+pdf("plots/My_Fig2AvgQwinter.pdf") #
+boxplot(outJUI2$sims.list$g.0[,1,1],outJUI2$sims.list$g.0[,2,1],outJUI2$sims.list$g.0[,3,1],outJUI2$sims.list$g.0[,4,1],
+        outJUI2$sims.list$g.0[,5,1],outJUI2$sims.list$g.0[,6,1],outJUI2$sims.list$g.0[,7,1],outJUI2$sims.list$g.0[,8,1])
+abline(0,0)
+dev.off()
+
+pdf("plots/My_Fig2AvgQflows.pdf") #
+boxplot(outJUI3$sims.list$g.0[,1,1],outJUI3$sims.list$g.0[,2,1],outJUI3$sims.list$g.0[,3,1],outJUI3$sims.list$g.0[,4,1],
+        outJUI3$sims.list$g.0[,5,1],outJUI3$sims.list$g.0[,6,1],outJUI3$sims.list$g.0[,7,1],outJUI3$sims.list$g.0[,8,1])
+abline(0,0)
+dev.off()
+
+par(mar=c(6, 4.1, 4.1, 2.1))
+
+pdf("plots/EffectAvgSflows.pdf") #
+#labels
+labels=paste(c("Summer Flow","Fall Flow","Winter Flow","Spring Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI3$sims.list$g.0[,1,1],outJUI3$sims.list$g.0[,2,1],outJUI3$sims.list$g.0[,3,1],outJUI3$sims.list$g.0[,4,1],
+        outJUI3$sims.list$g.0[,5,1],outJUI3$sims.list$g.0[,6,1],outJUI3$sims.list$g.0[,7,1],outJUI3$sims.list$g.0[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        main="Predicted average seasonal flows")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
+pdf("plots/EffectDurationflows.pdf") #
+#labels
+labels=paste(c("Summer Low Flow","Fall Low Flow","Winter High Flow","Spring High Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI4$sims.list$g.0[,1,1],outJUI4$sims.list$g.0[,2,1],outJUI4$sims.list$g.0[,3,1],outJUI4$sims.list$g.0[,4,1],
+        outJUI4$sims.list$g.0[,5,1],outJUI4$sims.list$g.0[,6,1],outJUI4$sims.list$g.0[,7,1],outJUI4$sims.list$g.0[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        main="Duration of flows (High=above 95%ile; Low= below 5%ile)")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
 abline(0,0)
 dev.off()
 
@@ -39,7 +123,7 @@ summary(outpaperFull_df$`mu[1]`)
 # [6714] "sigma2.b[2,2]" "sigma2.b[3,2]" "sigma2.b[4,2]" "sigma2.b[5,2]" "sigma2.b[6,2]" "sigma2.b[7,2]" "sigma2.b[8,2]"
 # [6721] "sigmaN2[1]"    "sigmaN2[2]"   
 
-#detection rate
+##### detection rate  ####
 summary(outpaperFull_df$`p.mean[1]`)
 
 #pull YOY abundance, then take means
@@ -70,4 +154,21 @@ ggplot(ccN_CP1, aes(x = P1count, y = MeanN_YOY)) + geom_point() + annotate("text
   labs(x="First Pass Count",y="Abundance estimated by model in Kanno et al (2016)")+
   ggtitle("Comparison of first pass counts to abundance for YOY in SNP 1982-2010")+
   geom_abline(intercept = 0, slope = 1) + annotate("text", x = 320, y = 280, label = "1:1 line") 
+
+#### BIAS ####
+##Detection
+# for(i in 1:nSites) {
+#   for(t in 1:nYears){
+#     for(j in 1:nAges){
+#       y[i,t,j,1] ~ dbin(p[i,t,j], N[i,t,j])
+#       y[i,t,j,2] ~ dbin(p[i,t,j]*(1-p[i,t,j]), N[i,t,j])
+#       y[i,t,j,3] ~ dbin(p[i,t,j]*(1-p[i,t,j])*(1-p[i,t,j]), N[i,t,j])  
+#       
+#       p[i,t,j] <- 1/(1 + exp(-lp.lim[i,t,j]))
+#       lp.lim[i,t,j] <- min(999, max(-999, lp[i,t,j]))
+#       lp[i,t,j] <- p.mu[j] + p.b[1,j]*julian[i,t] + p.b[2,j]*prcpTot[i,t] + p.b[3,j]*area[i]
+#     }
+#   } 
+
+#so first pass: y[i,t,1,pass]; Site i, Year t - y is the observed count data
 

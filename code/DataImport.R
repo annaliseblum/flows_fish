@@ -44,7 +44,7 @@ SitesHUC2$LNG_GAGE<-as.numeric(SitesHUC2$LNG_GAGE)
 ####2 - Import streamflow data from USGS NWIS ####
 # Sites<-unique(SitesHUC2$site_no)
 # parameterCd<-"00060" #set the parameter of interest at cfs
-# rawDailyData<-readNWISdv(Sites,parameterCd, startDate = "1982-01-01", endDate = "2010-12-31") #statCd = "00003 defaults
+# rawDailyData<-readNWISdv(Sites,parameterCd, startDate = "1981-01-01", endDate = "2010-12-31") #statCd = "00003 defaults
 # save(rawDailyData, file="data/rawDailyData.rdata")
 
 load("data/rawDailyData.rdata")

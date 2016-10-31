@@ -25,7 +25,7 @@ load("output/rawUVA_BC.rdata") #UVA sites characteristics
 load("output/UVA_Discharge.rdata") #UVA flow data
 
 ## Data cleaning ###
-source(file="code/FlowPrep.R")
+source(file="code/FlowPrep.R") #with NN only need section 1 of this data set...
 source(file="code/FishPrep.R")
 source(file="code/WeatherPrep.R")
 

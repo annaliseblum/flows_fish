@@ -31,11 +31,13 @@ length(unique(A.Flows$site_no)); length(unique(A.Fish$site_no))
 names(A.Flows)
 names(A.Fish)
 
-Sites_U.w<-A.Flows[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+Sites_U.w<-A.Flows[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer",
+                     "Pwinter","MaxTfall",
                      "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
                      "MinTwinter","type")] #already have a type variable
 
-Sites_F.w<-A.Fish[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer","Pwinter","MaxTfall",
+Sites_F.w<-A.Fish[c("site_no","Nyear","DA_SQKM","Slope_pct","Aspect_deg","Elev_m","Pfall","Pspring","Psummer",
+                    "Pwinter","MaxTfall",
                     "MaxTspring","MaxTsummer","MaxTwinter","MinTfall","MinTspring","MinTsummer",
                     "MinTwinter")]
 Sites_F.w$type<-"fish" #have to add type var
@@ -209,6 +211,20 @@ pdf("plots/Site_comparisonDA_Elev.pdf") #
 multiplot(p1, p4, p5, cols=3)
 dev.off()
 
+##For 4 NN sites NNfish_USGS and  fishSC
+NNfish_USGS<-gagedsites_BC[gagedsites_BC$site_no=="01632000"|gagedsites_BC$site_no=="01632900" #4 NN 01632000 01632900 01634500 02028500
+                           |gagedsites_BC$site_no=="01634500"|gagedsites_BC$site_no=="02028500",]
+NNfish_USGS<-NNfish_USGS[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE","Slope_pct","Aspect_deg","Elev_m","type")]
+fishSC1<-fishSC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE","Slope_pct","Aspect_deg","Elev_m")]
+fishSC1$type<-"Fish"
+NN_USGSfish<-rbind(NNfish_USGS, fishSC1)
+
+p1=ggplot(NN_USGSfish, aes(factor(type), DA_SQKM)) + geom_boxplot()+ labs(title = "Drainage area (km2)",x="",y="km2")
+p2=ggplot(NN_USGSfish, aes(factor(type), Slope_pct)) + geom_boxplot()+ labs(title = "Slope Percent",x="",y="") 
+p3=ggplot(NN_USGSfish, aes(factor(type), Aspect_deg)) + geom_boxplot()+ labs(title = "Aspect degree",x="",y="")
+p4=ggplot(NN_USGSfish, aes(factor(type), Elev_m)) + geom_boxplot()+ labs(title = "Elevation (m)",x="",y="")
+multiplot(p1,p2,p3, p4, cols=2)
+
 #### Maps ####
 library("ggmap")
 library("ggplot2")
@@ -258,6 +274,19 @@ ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = FullRecLLcrop, c
   geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)+
   geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = NNUVA_USGS, color="blue",size = 2)+pointLabels
 dev.off()
+
+##4 USGS NN sites to fish - 01632000 01632900 01634500 02028500
+NNfish_USGS<-gagedsites_BC[gagedsites_BC$site_no=="01632000"|gagedsites_BC$site_no=="01632900"
+                          |gagedsites_BC$site_no=="01634500"|gagedsites_BC$site_no=="02028500",]
+
+myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom = 9) #
+#zoom = 7 captures all points, zoom=8 loses 11 USGS sites, zoom=9 loses 34 USGS sites
+pdf(file="plots/site_mapFish4USGSNNpdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = NNfish_USGS, color="darkred",
+                        size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)
+dev.off()
+
 
 # geom_dl(data = df, 
 #         aes(label = labels), 

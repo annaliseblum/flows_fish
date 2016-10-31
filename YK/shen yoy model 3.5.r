@@ -31,7 +31,7 @@ model{
     }
   }
   
-  for(j in 1:nAges){
+  for(j in 1:nAges){ #this is to get tau for the error for the site*year random effect (or model error?)
     tauN[j] <- pow(sigmaN[j], -2)
     sigmaN[j] ~ dunif(0, 3)
     sigmaN2[j] <- pow(sigmaN[j], 2)

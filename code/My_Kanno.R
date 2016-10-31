@@ -1,6 +1,6 @@
 ##AB call she yoy model 3.5
-##June 6, 2016
-
+##June 6, 2016; Modified Oct 27,2016
+#rm(list = setdiff(ls(), lsf.str())) #clears all variables except functions
 ##SLOPE STANDARDIZATION DOESN'T HAVE SD=1; FIX THIS
 
 getwd()
@@ -32,9 +32,8 @@ prcpTot.std.ar[is.na(prcpTot.std.ar)] <- 0
 
 ## Setting up for the JAGs model
 # data structure
-nSites=115; nYears=29; nAges=2; nPasses=3 ##I changed nSites and nYears
+nSites=115; nYears=29; nAges=1; nPasses=3 ## Just run for nAge = YOY
 
-#nSites=34; nYears=17; nAges=2; nPasses=3 ##I changed nSites and nYears
 nCovs=8
 
 # bundle data
@@ -51,39 +50,39 @@ dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
 init <- function() list( mu=runif(nAges,0,5),
                          eps=array(runif(nSites*nYears*nAges,-1,1), c(nSites,nYears,nAges)),
                          b=array(rnorm(nCovs*nSites*nAges,0,2), c(nCovs,nSites,nAges)),
-                         sigmaN=runif(2,0,3), 
+                         sigmaN=runif(nAges,0,3), #replaced 2 with nAges
                          sigma.b=array(runif(nCovs*nAges,0,3), c(nCovs,nAges)),
                          g.0=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)), 
                          g.1=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
                          g.2=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
                          g.3=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
-                         p.mean=rep(0.5,2), p.b=array(rnorm(3*nAges,0,0.5), c(3,nAges)), 
+                         p.mean=rep(0.5,nAges), p.b=array(rnorm(3*nAges,0,0.5), c(3,nAges)), #p.mean=rep(0.5,nAges) from 2
                          N=array(500, dim=c(nSites, nYears, nAges)),
                          b.day=runif(nAges,-2,2),
                          b.site=array(rnorm(3*nAges,0,0.5), c(3,nAges)))
 
-## Running JAGS
-## sequential
-set.seed(234)
-StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
-                          dat, init, n.chains=3, n.adapt=100000)
+# ## Running JAGS
+# ## sequential
+# set.seed(234)
+# StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
+#                           dat, init, n.chains=3, n.adapt=100000)
+# 
+# ## concise summary
+# Niter=50000
+# Nthin=20
+# pars <- c("mu","sigmaN2","sigma2.b","g.0",
+#           "p.mean","p.b","b.day","b.site","N") 
+# outpaperFull <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin) #same as paper: 115 sites and 29 years
+# 
+# summary(out1)
+# plot(out1)
+# 
+# outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
+# save(outpaperFull_df,file="output/outpaperFull_df.rdata")
 
-## concise summary
-Niter=50000
-Nthin=20
-pars <- c("mu","sigmaN2","sigma2.b","g.0",
-          "p.mean","p.b","b.day","b.site","N") 
-outpaperFull <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin) #same as paper: 115 sites and 29 years
 
-summary(out1)
-plot(out1)
-
-outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
-save(outpaperFull_df,file="output/outpaperFull_df.rdata")
-
-
-##with JAAGUI - started at 12:10 pm - ended 4:30 pm
-nc=3;ni=50000; nt=20; nb=10000
+##with JAAGUI - started at 11: am pm - ended 1 pm! with 3 cores; can get up to 16 cores on the server
+nc=20;ni=50000; nt=20; nb=10000
 pars <- c("mu","sigmaN2","sigma2.b","g.0",
           "p.mean","p.b","b.day","b.site") 
 

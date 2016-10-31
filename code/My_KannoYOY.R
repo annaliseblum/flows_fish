@@ -1,5 +1,6 @@
 ##AB call she yoy model 3.5
-##June 6, 2016
+##June 6, 2016; modified Oct 27,2016
+#rm(list = setdiff(ls(), lsf.str())) #clears all variables except functions
 
 ##SLOPE STANDARDIZATION DOESN'T HAVE SD=1; FIX THIS
 
@@ -31,7 +32,7 @@ julian.std.ar[is.na(julian.std.ar)] <- 0
 prcpTot.std.ar[is.na(prcpTot.std.ar)] <- 0
 
 ##subset data for 34 sites and 17 years
-mycountAr<-countAr[site.pos,13:29,1,] #only 34 sites and only 1996-2010 (lost 1994 and 1995 because of lagged flows for prediction and fish years?)
+#mycountAr<-countAr[site.pos,13:29,1,] #only 34 sites and only 1996-2010 (lost 1994 and 1995 because of lagged flows for prediction and fish years?)
 dim(mycountAr); dimnames(mycountAr)
 
 #matrices of sites by year

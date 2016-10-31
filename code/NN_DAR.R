@@ -184,3 +184,55 @@ fish_gagedflows$NNpredcfs<-fish_gagedflows$cfsperKM2*fish_gagedflows$DA_SQKM
 dNN.Fish<-fish_gagedflows[c("site_no","Date","NNpredcfs")]
 
 save(dNN.Fish,file="output/dNN.Fish.rdata")
+
+#### 6 Just USGS with full 29 year record for fish sites - Predict daily flow time series ####
+
+load("output/fishSC.rdata")
+head(fishSC)
+fishLL<-fishSC[c("LAT_GAGE","LNG_GAGE")]
+
+gaged_LL<-USGS_LL29
+
+gaged_sp <- SpatialPoints(gaged_LL)
+fish_sp <- SpatialPoints(fishLL)
+fishLL$nearest_gage <- apply(gDistance(gaged_sp, fish_sp, byid=TRUE), 1, which.min) #returns entry number of closest
+gaged_LL$NDX<-1:nrow(gaged_LL); head(gaged_LL)
+names(gaged_LL)<-c("gaged_LAT","gaged_LNG","nearest_gage")
+
+#merge fish site info with nearest gage numbers
+fishDA<-fishSC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+fishDA2<-merge(fishDA,fishLL,by=c("LAT_GAGE","LNG_GAGE"))
+
+#pull gaged site characteristics to merge those in
+gagedsites<-gagedsites_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+names(gagedsites)<-c("gaged_site_no","gaged_DA_SQKM","gaged_LAT","gaged_LNG")
+
+#merge gaged site info into data set with index (called "nearest gage" for later)
+gagedsites<-merge(gagedsites,gaged_LL,by=c("gaged_LAT","gaged_LNG"))
+
+#now merge gaged lat and long into master fish data set by nearest gage
+FRfish_gaged_list<-merge(fishDA2,gagedsites,by="nearest_gage") #all UVA sites
+save(FRfish_gaged_list,file="output/FRfish_gaged_list.rdata")
+
+#now merge in gaged flow data
+##create daily flows data set of both USGS and UVA data
+load("output/USGSdaily.rdata")
+USGSdaily<-USGSdaily[,c("site_no","Date", "cfs")]
+names(USGSdaily)[1]<-"gaged_site_no"
+gaged_daily<-USGSdaily
+
+fish_gagedflows<-merge(fish_gaged_list,gaged_daily,by="gaged_site_no")
+
+table(as.factor(fish_gagedflows$site_no)) #how many flows available by site?
+rec.length<-aggregate(fish_gagedflows$site_no,by=list(fish_gagedflows$site_no),length)
+summary(rec.length) #Full record for all of them
+names(rec.length)<-c("site_no","days")
+rec.length$years<-rec.length$days/365
+
+head(fish_gagedflows)
+fish_gagedflows$cfsperKM2<-fish_gagedflows$cfs/fish_gagedflows$gaged_DA_SQKM
+fish_gagedflows$NNpredcfs<-fish_gagedflows$cfsperKM2*fish_gagedflows$DA_SQKM
+
+dNN.USGS.Fish<-fish_gagedflows[c("site_no","Date","NNpredcfs")]
+
+save(dNN.USGS.Fish,file="output/dNN.USGS.Fish.rdata")
