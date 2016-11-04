@@ -6,7 +6,7 @@ names(outpaperFull_df)
 
 MeansoutpaperFull<-colMeans(outpaperFull_df)
 
-#### Effects boxplots (Figure 2 in Kanno et al)  ####
+#### Flow and Temp effects boxplots (Figure 2 in Kanno et al)  ####
 #to replicate Figure 2: (yess)
 summary(outpaperFull_df$`g.0[1,1]`)
 summary(outpaperFull_df$`g.0[2,1]`)
@@ -60,17 +60,6 @@ boxplot(outJUI$sims.list$g.0[,1,1],outJUI$sims.list$g.0[,2,1],outJUI$sims.list$g
 abline(0,0)
 dev.off()
 
-pdf("plots/My_Fig2AvgQwinter.pdf") #
-boxplot(outJUI2$sims.list$g.0[,1,1],outJUI2$sims.list$g.0[,2,1],outJUI2$sims.list$g.0[,3,1],outJUI2$sims.list$g.0[,4,1],
-        outJUI2$sims.list$g.0[,5,1],outJUI2$sims.list$g.0[,6,1],outJUI2$sims.list$g.0[,7,1],outJUI2$sims.list$g.0[,8,1])
-abline(0,0)
-dev.off()
-
-pdf("plots/My_Fig2AvgQflows.pdf") #
-boxplot(outJUI3$sims.list$g.0[,1,1],outJUI3$sims.list$g.0[,2,1],outJUI3$sims.list$g.0[,3,1],outJUI3$sims.list$g.0[,4,1],
-        outJUI3$sims.list$g.0[,5,1],outJUI3$sims.list$g.0[,6,1],outJUI3$sims.list$g.0[,7,1],outJUI3$sims.list$g.0[,8,1])
-abline(0,0)
-dev.off()
 
 par(mar=c(6, 4.1, 4.1, 2.1))
 
@@ -106,6 +95,22 @@ text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
 abline(0,0)
 dev.off()
 
+pdf("plots/EffectMagnitudeflows.pdf") #
+#labels
+labels=paste(c("Summer Low Flow","Fall Low Flow","Winter High Flow","Spring High Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI5$sims.list$g.0[,1,1],outJUI5$sims.list$g.0[,2,1],outJUI5$sims.list$g.0[,3,1],outJUI5$sims.list$g.0[,4,1],
+        outJUI5$sims.list$g.0[,5,1],outJUI5$sims.list$g.0[,6,1],outJUI5$sims.list$g.0[,7,1],outJUI5$sims.list$g.0[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        main="Magnitude of low (5%ile) and high (95%) flows")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
 #mu is average fish abundance
 summary(outpaperFull_df$`mu[1]`)
 
@@ -122,6 +127,70 @@ summary(outpaperFull_df$`mu[1]`)
 # [6707] "sigma2.b[3,1]" "sigma2.b[4,1]" "sigma2.b[5,1]" "sigma2.b[6,1]" "sigma2.b[7,1]" "sigma2.b[8,1]" "sigma2.b[1,2]"
 # [6714] "sigma2.b[2,2]" "sigma2.b[3,2]" "sigma2.b[4,2]" "sigma2.b[5,2]" "sigma2.b[6,2]" "sigma2.b[7,2]" "sigma2.b[8,2]"
 # [6721] "sigmaN2[1]"    "sigmaN2[2]"   
+
+#### Site-Specific effects ####
+#b.site[1,j]*elev[i] + b.site[2,j]*lat[i] + b.site[3,j]*area[i] #j is ages=1 here
+
+
+pdf("plots/SiteSpecificEffects.pdf") #
+#labels
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI3$sims.list$b.site[,1,1],outJUI3$sims.list$b.site[,2,1],outJUI3$sims.list$g.1[,3,1],
+        ylab="site-specific covariate effect size",
+        main="Effects of site-specific covariate on YOY abundance",names = c("elevation","latitude","watershed area"))
+abline(0,0)
+dev.off()
+
+##On the 8 Covariates
+pdf("plots/ElevationAvgSflows.pdf") #
+#labels
+labels=paste(c("Summer Flow","Fall Flow","Winter Flow","Spring Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI3$sims.list$g.1[,1,1],outJUI3$sims.list$g.1[,2,1],outJUI3$sims.list$g.1[,3,1],outJUI3$sims.list$g.1[,4,1],
+        outJUI3$sims.list$g.1[,5,1],outJUI3$sims.list$g.1[,6,1],outJUI3$sims.list$g.1[,7,1],outJUI3$sims.list$g.1[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="elevation effect size",
+        main="Effects of elevation on seasonal average flows and temps")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
+pdf("plots/LatitudeAvgSflows.pdf") #
+#labels
+labels=paste(c("Summer Flow","Fall Flow","Winter Flow","Spring Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI3$sims.list$g.2[,1,1],outJUI3$sims.list$g.2[,2,1],outJUI3$sims.list$g.2[,3,1],outJUI3$sims.list$g.2[,4,1],
+        outJUI3$sims.list$g.2[,5,1],outJUI3$sims.list$g.2[,6,1],outJUI3$sims.list$g.2[,7,1],outJUI3$sims.list$g.2[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect on latitude",
+        main="Effects of Latitude on seasonal average flows and temps")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
+pdf("plots/WSAreaAvgSflows.pdf") #
+#labels
+labels=paste(c("Summer Flow","Fall Flow","Winter Flow","Spring Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI3$sims.list$g.3[,1,1],outJUI3$sims.list$g.3[,2,1],outJUI3$sims.list$g.3[,3,1],outJUI3$sims.list$g.3[,4,1],
+        outJUI3$sims.list$g.3[,5,1],outJUI3$sims.list$g.3[,6,1],outJUI3$sims.list$g.3[,7,1],outJUI3$sims.list$g.3[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="watershed area effect size",
+        main="Effects of watershed area on seasonal average flows and temps")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+dev.off()
+
 
 ##### detection rate  ####
 summary(outpaperFull_df$`p.mean[1]`)
@@ -171,4 +240,15 @@ ggplot(ccN_CP1, aes(x = P1count, y = MeanN_YOY)) + geom_point() + annotate("text
 #   } 
 
 #so first pass: y[i,t,1,pass]; Site i, Year t - y is the observed count data
+
+#### RMSE: ERROR = EPS?? ####
+
+eps[i,t,1] # 115*29 of these
+
+(mean((outJUI5$mean$eps)^2))^.5 # RMSE 0.4909041 for Magnitude
+(mean((outJUI4$mean$eps)^2))^.5 # RMSE 0.5060227 for Duration
+(mean((outJUI3$mean$eps)^2))^.5 # RMSE 0.4827823 for Seasonal Averages
+(mean((outJUI2$mean$eps)^2))^.5 #RMSE  0.4977342 for Kanno with Precip
+
+
 

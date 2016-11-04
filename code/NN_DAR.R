@@ -13,8 +13,9 @@
 load("output/UVA_BC.rdata") #UVA gages Basin Chars
 load("output/USGS_BC.rdata")#USGS gages Basin Chars
 load("output/gagedsites_BC.rdata")# both
-load("data/r.rdata")
-load("output/USGSdaily.rdata")
+load("data/r.rdata") #what was here?? UVA daily data
+load("output/USGSdaily.rdata") 
+load("output/UVA_daily.rdata")
 
 #install Will's package
 #install_github("wfarmer-usgs/PUBAD")
@@ -53,41 +54,74 @@ class(UVA_daily$Date);class(NN_USGSdata$Date)
 #### 3 - USGS for UVA sites - Predict daily flow time series ####
 #to find the nearest USGS gage to the UVA sampling sites:
 library(rgeos);library(sp)
+gaged_LL<-USGS_LL29
+
+gaged_sp <- SpatialPoints(gaged_LL)
 UVA_sp <- SpatialPoints(UVA_LL)
-USGS_sp <- SpatialPoints(USGS_LL)
-UVA_LL$nearest_usgsG <- apply(gDistance(USGS_sp, UVA_sp, byid=TRUE), 1, which.min) #returns entry number of closest
+UVA_LL$nearest_gage <- apply(gDistance(gaged_sp, UVA_sp, byid=TRUE), 1, which.min) #returns entry number of closest
+gaged_LL$NDX<-1:nrow(gaged_LL); head(gaged_LL)
+names(gaged_LL)<-c("gaged_LAT","gaged_LNG","nearest_gage")
 
-#merge back in the site numbers and other info:
+#merge fish site info with nearest gage numbers
 UVA_DA<-UVA_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+UVA_DA2<-merge(UVA_DA,UVA_LL,by=c("LAT_GAGE","LNG_GAGE"))
 
-UVA_DA<-merge(UVA_DA,UVA_LL,by=c("LAT_GAGE","LNG_GAGE")) #merge in the nearest USGS gage index
+#pull gaged site characteristics to merge those in
+gagedsites<-gagedsites_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+names(gagedsites)<-c("gaged_site_no","gaged_DA_SQKM","gaged_LAT","gaged_LNG")
 
-USGSsites<-USGS_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE","nearest_usgsG")]
-names(USGSsites)<-c("USGS_site_no","USGS_DA_SQKM","USGS_LAT","USGS_LNG","nearest_usgsG")
+#merge gaged site info into data set with index (called "nearest gage" for later)
+gagedsites<-merge(gagedsites,gaged_LL,by=c("gaged_LAT","gaged_LNG"))
 
-NN_UVA_USGS<-merge(USGSsites,UVA_DA,by=c("nearest_usgsG"))
+#now merge gaged lat and long into master fish data set by nearest gage
+UVA_gaged_list<-merge(UVA_DA2,gagedsites,by="nearest_gage") #all UVA sites
 
-NN_UVA_USGSd<-merge(NN_UVA_USGS,USGSdailyNN,by="USGS_site_no") #add in the daily flow data for the 3 USGS sites
+#now merge in gaged flow data
+##create daily flows data set of both USGS and UVA data
+load("output/USGSdaily.rdata")
+USGSdaily<-USGSdaily[,c("site_no","Date", "cfs")]
+names(USGSdaily)[1]<-"gaged_site_no"
+gaged_daily<-USGSdaily
 
-# #how many days of USGS data per UVA site?
-# table(as.factor(NN_UVA_USGSd$site_no))
-# #UVA_NFDR and UVA_STAN only have 7.4 years; #UVA_PAIN and UVA_WOR1 have 29 years; #UVA_STAN has 25 years
+UVA_gagedflows<-merge(UVA_gaged_list,gaged_daily,by="gaged_site_no")
 
-NN_ALL<-merge(UVA_daily,NN_UVA_USGSd,by=c("site_no","Date")) #merge in observed flows at UVA sites
-NN_ALL$cfsperKM2<-NN_ALL$USGS_cfs/NN_ALL$USGS_DA_SQKM
-NN_ALL$NNpredcfs<-NN_ALL$cfsperKM2*NN_ALL$DA_SQKM
+table(as.factor(UVA_gagedflows$site_no)) #how many flows available by site?
+rec.length<-aggregate(UVA_gagedflows$site_no,by=list(UVA_gagedflows$site_no),length)
+summary(rec.length) #Full record for all of them
+names(rec.length)<-c("site_no","days")
+rec.length$years<-rec.length$days/365
 
-save(NN_ALL, file="output/NN_ALLrdata")
+head(UVA_gagedflows)
+unique(UVA_gagedflows$gaged_site_no) #only 2 USGS sites used
 
+UVA_gagedflows$cfsperKM2<-UVA_gagedflows$cfs/UVA_gagedflows$gaged_DA_SQKM
+UVA_gagedflows$NNpredcfs<-UVA_gagedflows$cfsperKM2*UVA_gagedflows$DA_SQKM
 
+dNN.USGS.UVA<-UVA_gagedflows[c("site_no","Date","NNpredcfs")]
 
-NSE(NN_ALL$NNpredcfs, NN_ALL$UVAobs_cfs) #0.36
-plot(NN_ALL$NNpredcfs, NN_ALL$UVAobs_cfs,xlim=c(0,600))
+##add UVA_ to begining of UVA_daily site_nos
+UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
+
+NN.USGS.UVA<-merge(UVA_daily,dNN.USGS.UVA,by=c("site_no","Date")) #merge in observed flows at UVA sites
+
+save(NN.USGS.UVA, file="output/NN.USGS.UVA.rdata")
+
+NSE(NN.USGS.UVA$NNpredcfs, NN.USGS.UVA$cfs) #0.37
+plot(NN.USGS.UVA$cfs,NN.USGS.UVA$NNpredcfs,xlim=c(0,600))
 abline(0,1)
 
-NSE(log(NN_ALL$NNpredcfs), log(NN_ALL$UVAobs_cfs+.0001)) #0.52 n=24,623
-plot(log(NN_ALL$NNpredcfs), log(NN_ALL$UVAobs_cfs+.0001))
+NSE(log(NN.USGS.UVA$NNpredcfs), log(NN.USGS.UVA$cfs+.0001)) #0.47 n=35,552
+plot(log(NN.USGS.UVA$NNpredcfs), log(NN.USGS.UVA$cfs+.0001))
 abline(0,1)
+
+UUGSUVAsiteNSE<-rep(NA,5)
+USGSUVAsiteLNSE<-rep(NA,5)
+#NSE by site
+for (i in 1:5){
+  idata<-NN.USGS.UVA[NN.USGS.UVA$site_no==unique(NN.USGS.UVA$site_no)[i],]
+  UUGSUVAsiteNSE[i]<-NSE(idata$NNpredcfs, idata$cfs)
+  USGSUVAsiteLNSE[i]<-NSE(log(idata$NNpredcfs+.0001), log(idata$cfs+.0001))
+}
 
 #### 4 UVA for UVA sites - Predict daily flow time series ####
 dist<-gDistance(UVA_sp, UVA_sp, byid=TRUE) #create matrix of distances
@@ -127,6 +161,23 @@ abline(0,1)
 NSE(log(NN_UVAUVA$NNpredcfs+.0001), log(NN_UVAUVA$UVAobs_cfs+.0001)) #0.42
 plot(log(NN_UVAUVA$NNpredcfs+.0001), log(NN_UVAUVA$UVAobs_cfs+.0001))
 abline(0,1)
+
+UVAUVAsiteNSE<-rep(NA,5)
+UVAUVAsiteLNSE<-rep(NA,5)
+#NSE by site
+for (i in 1:5){
+  idata<-NN_UVAUVA[NN_UVAUVA$site_no==unique(NN_UVAUVA$site_no)[i],]
+  UVAUVAsiteNSE[i]<-NSE(idata$NNpredcfs, idata$UVAobs_cfs)
+  UVAUVAsiteLNSE[i]<-NSE(log(idata$NNpredcfs+.0001), log(idata$UVAobs_cfs+.0001))
+}
+
+##Compare to USGS for UVA:
+pdf(file="plots/NSE_by_UAsite.pdf")
+boxplot(UVAUVAsiteNSE,UUGSUVAsiteNSE,UVAUVAsiteLNSE,USGSUVAsiteLNSE,names=c("UVA NSE","USGS NSE","UVA LNSE","USGS LNSE"),
+        main="NSE by 5 UVA sites using other sites (UVA vs USGS)",ylab="NSE and LNSE") #,ylim=c(-1,1)
+abline(0,0,lty=3)
+abline(v=2.5)
+dev.off()
 
 #### 5 USGS and UVA for fish sites - Predict daily flow time series ####
 
@@ -180,6 +231,9 @@ rec.length$years<-rec.length$days/365
 head(fish_gagedflows)
 fish_gagedflows$cfsperKM2<-fish_gagedflows$cfs/fish_gagedflows$gaged_DA_SQKM
 fish_gagedflows$NNpredcfs<-fish_gagedflows$cfsperKM2*fish_gagedflows$DA_SQKM
+
+#how many and which USGS sites?
+USGS_NNfish_Sites<-unique(fish_gagedflows$gaged_site_no) #01632000 01632900 01634500 02028500
 
 dNN.Fish<-fish_gagedflows[c("site_no","Date","NNpredcfs")]
 
