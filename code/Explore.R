@@ -281,10 +281,10 @@ NNfish_USGS<-gagedsites_BC[gagedsites_BC$site_no=="01632000"|gagedsites_BC$site_
 
 myMap<- get_map(location=myLocation, source="google", maptype="terrain", crop=FALSE,zoom = 9) #
 #zoom = 7 captures all points, zoom=8 loses 11 USGS sites, zoom=9 loses 34 USGS sites
-pdf(file="plots/site_mapFish4USGSNNpdf")
-ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = NNfish_USGS, color="darkred",
-                        size = 3)+
-  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)
+pdf(file="plots/site_mapFish4USGSNNUVA.pdf")
+ggmap(myMap)+geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = NNfish_USGS, color="darkred", size = 3)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = fishSC, color="black",size = 2,pch=1)+
+  geom_point(aes(x = LNG_GAGE, y = LAT_GAGE), data = gagedsites_BC[gagedsites_BC$type=="UVA",], color="blue",size = 3)
 dev.off()
 
 

@@ -60,7 +60,6 @@ boxplot(outJUI$sims.list$g.0[,1,1],outJUI$sims.list$g.0[,2,1],outJUI$sims.list$g
 abline(0,0)
 dev.off()
 
-
 par(mar=c(6, 4.1, 4.1, 2.1))
 
 pdf("plots/EffectAvgSflows.pdf") #
@@ -78,6 +77,34 @@ text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
      labels = labels, xpd = TRUE)
 abline(0,0)
 dev.off()
+
+labels=paste(c("Summer Flow","Fall Flow","Winter Flow","Spring Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(outJUI3_uva$sims.list$g.0[,1,1],outJUI3_uva$sims.list$g.0[,2,1],outJUI3_uva$sims.list$g.0[,3,1],outJUI3_uva$sims.list$g.0[,4,1],
+        outJUI3_uva$sims.list$g.0[,5,1],outJUI3_uva$sims.list$g.0[,6,1],outJUI3_uva$sims.list$g.0[,7,1],outJUI3_uva$sims.list$g.0[,8,1],
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        main="Predicted average seasonal flows")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+
+#now have site-specific Bs so have to take mean of the sites for each of 6000 runs
+labels=paste(c("Summer Flow","Fall Flow","Winter Flow","Spring Flow","Summer Temp","Fall Temp","Winter Temp","Spring Temp"))
+par(mar = c(7, 4, 4, 2) + 0.1)
+## Create plot with no x axis and no x axis label
+boxplot(rowMeans(outJUI3_uvaNog$sims.list$b[,1,,1]),rowMeans(outJUI3_uvaNog$sims.list$b[,2,,1]),rowMeans(outJUI3_uvaNog$sims.list$b[,3,,1]),
+        rowMeans(outJUI3_uvaNog$sims.list$b[,4,,1]),rowMeans(outJUI3_uvaNog$sims.list$b[,5,,1]),rowMeans(outJUI3_uvaNog$sims.list$b[,6,,1]),
+          rowMeans(outJUI3_uvaNog$sims.list$b[,7,,1]),rowMeans(outJUI3_uvaNog$sims.list$b[,8,,1]),
+        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        main="Predicted average seasonal flows")
+axis(1, at=1:8,labels = FALSE)
+## Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
 
 pdf("plots/EffectDurationflows.pdf") #
 #labels
@@ -190,7 +217,6 @@ text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
      labels = labels, xpd = TRUE)
 abline(0,0)
 dev.off()
-
 
 ##### detection rate  ####
 summary(outpaperFull_df$`p.mean[1]`)
