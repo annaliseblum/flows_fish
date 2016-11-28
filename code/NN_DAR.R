@@ -1,8 +1,10 @@
-##NN DAR (nearest neighbor drainage area ratio prediction) daily flows prediction
+##NN DAR (nearest neighbor drainage area ratio prediction) daily flows prediction; compare UVA to USGS sites
 ###Annalise Blum
 #Created:July 15, 2016  Updated: Oct 25,2016
 ##Data NEEDED for this file: "output/gagedsites_BC.rdata"
 ##Data sets created in this file:
+
+#rm(list=ls())
 
 #### 1 - Load data sets
 #### 2 - Prep data sets
@@ -21,7 +23,7 @@ load("output/UVA_daily.rdata")
 #install_github("wfarmer-usgs/PUBAD")
 #The functions you will want are indexNN and estDAR.
 
-#### 2 - Prep data sets ####
+#### 2 - Prep data sets to compare UVA and USGS ####
 
 #create index number for list of USGS gages
 USGS_BC$nearest_usgsG<-1:nrow(USGS_BC) #number the USGS gages to match nearest_usgsG in UVA_LL
@@ -33,28 +35,39 @@ USGS_LL<-USGS_BC[c("LAT_GAGE","LNG_GAGE")]
 USGSdailyNN<-USGSdaily[c("site_no","Date","cfs")] #pull the useful columns
 names(USGSdailyNN)<-c("USGS_site_no","Date","USGS_cfs") #rename
 
-#create USGS data set of only sites with full 29 years of record
-rec.lengths<-aggregate(USGSdailyNN$USGS_cfs,by=list(USGSdailyNN$USGS_site_no),length)
-names(rec.lengths)<-c("USGS_site_no","daysofflow")
-USGSdailyNNrecs<-data.frame(merge(USGSdailyNN, rec.lengths, by = c('USGS_site_no'))) #merge with flow data
-#drop sites with less than 3 years of flow data
-USGSdailyNN29yr<-USGSdailyNNrecs[USGSdailyNNrecs$daysofflow>28*365,]
-USGS29yrsites<-as.data.frame(unique(USGSdailyNN29yr$USGS_site_no))
-names(USGS29yrsites)<-"site_no"
-USGS_BC29<-merge(USGS_BC,USGS29yrsites,by="site_no") #only full record sites
-USGS_LL29<-USGS_BC29[c("LAT_GAGE","LNG_GAGE")]
+#create USGS data set of only sites with same period of record as UVA
+#summary(UVA_daily) #I think 1993-2010 
+# count(UVA_daily$Date=="1993-01-01") #yep 5 of these
+UVAdailyNN93<-UVA_daily[UVA_daily$Date>"1992-12-31",]
+
+UVArec.lengths<-aggregate(UVAdailyNN93$cfs,by=list(UVAdailyNN93$site_no),length)
+summary(UVArec.lengths) #good all equal
 
 #add "UVA_" to UVA site numbers
-head(UVA_daily)
-UVA_daily<-UVA_daily[,1:3] #just pull first 3 columns
-names(UVA_daily)[3]<-"UVAobs_cfs"
-UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
-class(UVA_daily$Date);class(NN_USGSdata$Date)
+head(UVAdailyNN93)
+UVAdailyNN93<-UVAdailyNN93[,1:3] #just pull first 3 columns
+names(UVAdailyNN93)[3]<-"UVAobs_cfs"
+UVAdailyNN93$site_no<-paste("UVA_",UVAdailyNN93$site_no,sep="")
+class(UVAdailyNN93$Date);class(USGSdailyNNrecs$Date)
+
+##USGS
+USGSdailyNN93<-USGSdailyNN[USGSdailyNN$Date>"1992-12-31",]
+summary(USGSdailyNN93)
+rec.lengths<-aggregate(USGSdailyNN93$USGS_cfs,by=list(USGSdailyNN93$USGS_site_no),length)
+names(rec.lengths)<-c("USGS_site_no","daysofflow"); summary(rec.lengths)
+USGSrec.lengths<-rec.lengths[rec.lengths$daysofflow==6574,] #28 sites
+USGSdailyNNrecs<-data.frame(merge(USGSdailyNN93, USGSrec.lengths, by = c('USGS_site_no'))) #merge with flow data
+# #drop sites with less than 3 years of flow data
+# USGSdailyNN29yr<-USGSdailyNNrecs[USGSdailyNNrecs$daysofflow>28*365,]
+SiteList29<-as.data.frame(unique(USGSdailyNNrecs$USGS_site_no))
+names(SiteList29)<-"site_no"
+USGS_BC28<-merge(USGS_BC,SiteList29,by="site_no") #only full record sites
+USGS_LL28<-USGS_BC28[c("LAT_GAGE","LNG_GAGE")]
 
 #### 3 - USGS for UVA sites - Predict daily flow time series ####
 #to find the nearest USGS gage to the UVA sampling sites:
 library(rgeos);library(sp)
-gaged_LL<-USGS_LL29
+gaged_LL<-USGS_LL28
 
 gaged_sp <- SpatialPoints(gaged_LL)
 UVA_sp <- SpatialPoints(UVA_LL)
@@ -78,49 +91,51 @@ UVA_gaged_list<-merge(UVA_DA2,gagedsites,by="nearest_gage") #all UVA sites
 
 #now merge in gaged flow data
 ##create daily flows data set of both USGS and UVA data
-load("output/USGSdaily.rdata")
-USGSdaily<-USGSdaily[,c("site_no","Date", "cfs")]
-names(USGSdaily)[1]<-"gaged_site_no"
-gaged_daily<-USGSdaily
+# load("output/USGSdaily.rdata")
+# USGSdaily<-USGSdaily[,c("site_no","Date", "cfs")]
+# names(USGSdaily)[1]<-"gaged_site_no"
+# gaged_daily<-USGSdaily
 
-UVA_gagedflows<-merge(UVA_gaged_list,gaged_daily,by="gaged_site_no")
+names(USGSdailyNN93)[1]<-"gaged_site_no"
 
-table(as.factor(UVA_gagedflows$site_no)) #how many flows available by site?
-rec.length<-aggregate(UVA_gagedflows$site_no,by=list(UVA_gagedflows$site_no),length)
-summary(rec.length) #Full record for all of them
-names(rec.length)<-c("site_no","days")
-rec.length$years<-rec.length$days/365
+UVA_gagedflows<-merge(UVA_gaged_list,USGSdailyNN93,by="gaged_site_no")
+
+table(as.factor(UVA_gagedflows$site_no)) #how many flows available by site? all 6574
+# rec.length<-aggregate(UVA_gagedflows$site_no,by=list(UVA_gagedflows$site_no),length)
+# summary(rec.length) #Full record for all of them
+# names(rec.length)<-c("site_no","days")
+# rec.length$years<-rec.length$days/365
 
 head(UVA_gagedflows)
 unique(UVA_gagedflows$gaged_site_no) #only 2 USGS sites used
 
-UVA_gagedflows$cfsperKM2<-UVA_gagedflows$cfs/UVA_gagedflows$gaged_DA_SQKM
+UVA_gagedflows$cfsperKM2<-UVA_gagedflows$USGS_cfs/UVA_gagedflows$gaged_DA_SQKM
 UVA_gagedflows$NNpredcfs<-UVA_gagedflows$cfsperKM2*UVA_gagedflows$DA_SQKM
 
 dNN.USGS.UVA<-UVA_gagedflows[c("site_no","Date","NNpredcfs")]
 
 ##add UVA_ to begining of UVA_daily site_nos
-UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
+#UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
 
-NN.USGS.UVA<-merge(UVA_daily,dNN.USGS.UVA,by=c("site_no","Date")) #merge in observed flows at UVA sites
+NN.USGS.UVA<-merge(UVAdailyNN93,dNN.USGS.UVA,by=c("site_no","Date")) #merge in observed flows at UVA sites
+NN.USGS.UVA93<-NN.USGS.UVA #this just starts in 1993
+save(NN.USGS.UVA93, file="output/NN.USGS.UVA93.rdata")
 
-save(NN.USGS.UVA, file="output/NN.USGS.UVA.rdata")
-
-NSE(NN.USGS.UVA$NNpredcfs, NN.USGS.UVA$cfs) #0.37
-plot(NN.USGS.UVA$cfs,NN.USGS.UVA$NNpredcfs,xlim=c(0,600))
+NSE(NN.USGS.UVA93$NNpredcfs, NN.USGS.UVA93$UVAobs_cfs) #0.37
+plot(NN.USGS.UVA93$UVAobs_cfs,NN.USGS.UVA93$NNpredcfs,xlim=c(0,600))
 abline(0,1)
 
-NSE(log(NN.USGS.UVA$NNpredcfs), log(NN.USGS.UVA$cfs+.0001)) #0.47 n=35,552
-plot(log(NN.USGS.UVA$NNpredcfs), log(NN.USGS.UVA$cfs+.0001))
+NSE(log(NN.USGS.UVA93$NNpredcfs), log(NN.USGS.UVA93$UVAobs_cfs+.0001)) #0.49 n=35,552
+plot(log(NN.USGS.UVA93$NNpredcfs), log(NN.USGS.UVA93$UVAobs_cfs+.0001))
 abline(0,1)
 
 UUGSUVAsiteNSE<-rep(NA,5)
 USGSUVAsiteLNSE<-rep(NA,5)
 #NSE by site
 for (i in 1:5){
-  idata<-NN.USGS.UVA[NN.USGS.UVA$site_no==unique(NN.USGS.UVA$site_no)[i],]
-  UUGSUVAsiteNSE[i]<-NSE(idata$NNpredcfs, idata$cfs)
-  USGSUVAsiteLNSE[i]<-NSE(log(idata$NNpredcfs+.0001), log(idata$cfs+.0001))
+  idata<-NN.USGS.UVA93[NN.USGS.UVA93$site_no==unique(NN.USGS.UVA93$site_no)[i],]
+  UUGSUVAsiteNSE[i]<-NSE(idata$NNpredcfs, idata$UVAobs_cfs)
+  USGSUVAsiteLNSE[i]<-NSE(log(idata$NNpredcfs+.0001), log(idata$UVAobs_cfs+.0001))
 }
 
 #### 4 UVA for UVA sites - Predict daily flow time series ####
@@ -136,42 +151,40 @@ UVA4_sp <- SpatialPoints(UVA_LL4)
 dist<-gDistance( UVA4_sp,UVA_sp, byid=TRUE) #create matrix of distances
 dist[dist==0] <- NA #replace 0x with NA
 UVA_DAnew<-UVA_DA
-UVA_DAnew$nearest_uvaG <- apply(dist, 1, which.min) #returns entry number of closest
+UVA_DAnew$nearest_uvaG <- apply(dist, 1, which.min) #returns entry number of closest - master list of matches
 
-UVA_LL4$nearest_uvaG<-1:4
+##Get NN dataset
+UVA_LL4$nearest_uvaG<-1:4 #get index for list with only 4 of the 5 sites
 
 #merge back in the site numbers and other info:
 UVA_DAUVA<-merge(UVA_DA,UVA_LL4,by=c("LAT_GAGE","LNG_GAGE"))
-UVA_DAUVA<-UVA_DAUVA[c("site_no", "DA_SQKM","LAT_GAGE","LNG_GAGE")]
-names(UVA_DAUVA)<-c("NNsite_no", "NNDA_SQKM", "NNLAT_GAGE", "NNLNG_GAGE")
+UVA_DAUVA<-UVA_DAUVA[c("site_no", "DA_SQKM","LAT_GAGE","LNG_GAGE","nearest_uvaG")] #re-order
+names(UVA_DAUVA)<-c("NNsite_no", "NNDA_SQKM", "NNLAT_GAGE", "NNLNG_GAGE","nearest_uvaG") #add NN to the list of only 4
 
-# #create 2nd data set to get the DA of the NN
-# UVA_DA3<-UVA_DA
-# UVA_DA3$nearest_uvaG<-row.names(UVA_DA3)
-# UVA_DAUVA<-merge(UVA_DAnew,UVA_DA3,by="nearest_uvaG")
+#merge this into main data set
+UVA_matches<-merge(UVA_DAnew,UVA_DAUVA,by=c("nearest_uvaG"))
 
-load("output/UVA_daily.rdata")
-head(UVA_daily)
-UVA_daily<-UVA_daily[,1:3] #just pull first 3 columns
-names(UVA_daily)[3]<-"UVAobs_cfs"
-UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
+#make a second UVA_daily dataset for NN to get daily predictions
+head(UVAdailyNN93)
+NNUVA_daily2<-UVAdailyNN93
+names(NNUVA_daily2)<-c("NNsite_no", "Date", "NNcfs")
 
-#make a second UVA_daily dataset for NN"
-UVA_dailynew<-UVA_daily
-names(UVA_dailynew)<-c("NNsite_no", "Date", "NNcfs")
+#merge NN daily flows into master dataset (UVA_matches)
+UVA_merge1<-merge(UVA_matches,NNUVA_daily2,by=c("NNsite_no"))
 
-NN_UVAUVA<-merge(UVA_dailynew,UVA_DAUVA,by=c("NNsite_no"))
+UVA_merge1$cfsperKM2<-UVA_merge1$NNcfs/UVA_merge1$NNDA_SQKM
 
-##NEED TO MERGE WITH ACTUAL SITES AND NEAREST GAGE - START HERE
+UVA_merge1$NNpredcfs<-UVA_merge1$cfsperKM2*UVA_merge1$DA_SQKM
 
-NN_UVAUVA$cfsperKM2<-NN_UVAUVA$NNcfs/NN_UVAUVA$NNDA_SQKM
+#merge in observed flows
+UVA_merge2<-merge(UVA_merge1,UVAdailyNN93,by=c("site_no", "Date"))
+save(UVA_merge2,file="output/UVA_merge2.rdata")
 
-NN_UVAUVA$NNpredcfs<-NN_UVAUVA$cfsperKM2*NN_UVAUVA$DA_SQKM
-
+NN_UVAUVA<-UVA_merge2[c("site_no","Date","NNpredcfs","UVAobs_cfs")]
 save(NN_UVAUVA,file="output/NN_UVAUVA.rdata")
 
-NSE(NN_UVAUVA$NNpredcfs, NN_UVAUVA$UVAobs_cfs) #0.3 -  n=33,359
-plot(NN_UVAUVA$NNpredcfs, NN_UVAUVA$UVAobs_cfs,xlim=c(0,600))
+
+NSE(NN_UVAUVA$NNpredcfs, NN_UVAUVA$UVAobs_cfs) #0.3 -  n=33,359; now 0.61
 abline(0,1)
 
 NSE(log(NN_UVAUVA$NNpredcfs+.0001), log(NN_UVAUVA$UVAobs_cfs+.0001)) #0.42
@@ -186,6 +199,8 @@ for (i in 1:5){
   UVAUVAsiteNSE[i]<-NSE(idata$NNpredcfs, idata$UVAobs_cfs)
   UVAUVAsiteLNSE[i]<-NSE(log(idata$NNpredcfs+.0001), log(idata$UVAobs_cfs+.0001))
 }
+
+cbind(UVAUVAsiteNSE,UUGSUVAsiteNSE,UVAUVAsiteLNSE,USGSUVAsiteLNSE)
 
 ##Compare to USGS for UVA:
 par(mfrow=c(1,1))
