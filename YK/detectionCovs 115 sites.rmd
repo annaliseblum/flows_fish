@@ -1,0 +1,172 @@
+Shenandoah YOY abundance in 1982-2010 as a function of seasonal weather conditions
+Analysis started on 8/1/2014
+==================================================================================
+
+## working directory & libraries
+```{r working directory & libraries, warning=FALSE, message=FALSE}
+setwd('F:/Conte/Broad spatial modelling/VA_yoy_count/data/covs for detection data 115/')
+getwd()
+library(reshape2)
+library(rjags)
+library(plyr)
+library(ggplot2)
+library(knitr)
+library(arm)
+library(boot)
+load.module("glm")
+```
+
+
+                        #######################################
+                        #### Julian date of sampling dates ####
+                        #######################################
+## Read in data
+```{r read in data, results='hide'}
+directory <- 'F:/Conte/Broad spatial modelling/VA/analysis/Dail Madsen 6/ver 6.1/'
+fileName <- 'W_FI_MICOFISH_Stats_Rev2.csv'     # 'Rev2' has fish count for each electrofishing pass
+fishData <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+str(fishData)
+summary(fishData)
+```
+
+## Data organization
+```{r data organization}
+## Select brook trout data
+bktData <- subset(fishData, Species_Code == 'BKT')
+bktData <- bktData[ order(bktData$SiteVisit_ID), ]
+
+## Select 1982-2010 data
+bktData <- bktData[bktData$Year >= 1982 & bktData$Year <= 2010, ]
+
+## Examine which months sampling took place
+table(bktData$Month)  ## most are from June to August
+## Use June-August surveys so that similar seasons are sampled across years
+bktDataSummer <- bktData[bktData$Month >= 6 & bktData$Month <= 8, ]
+
+## remove what appears to be presence/absence surveys
+## they are those with 0 or 1 individuals for "All"
+bktDataSummerAll <- subset(bktDataSummer, AGE == 'All')
+bktDataSummerAllExcList <- subset(bktDataSummer, Pass1 <= 1)
+# use the exclude list above
+bktDataSummer2 <- bktDataSummer[ ! bktDataSummer$SiteVisit_ID %in% bktDataSummerAllExcList$SiteVisit_ID,  ]
+
+## site-by-year summary of when sampling has taken place (1:yes, 2:no)
+# values '3' indicate Ages 'All', '1' & '0' are available
+siteByYearSumm <- as.data.frame.matrix(table(bktDataSummer2$SiteID, bktDataSummer2$Year))
+## Remove duplicates
+# F_1F001 has two duplicate (identical) records (2008-06-25_F_1F001 & 2008-07-28_F_1F001)
+bktDataSummer3 <- bktDataSummer2[bktDataSummer2$SiteVisit_ID != '2008-07-28_F_1F001', ]
+# F_2F074 was sampled twice (two days in a row) in 1996; remove the second survey (1996-07-09_F_2F074)
+bktDataSummer3 <- bktDataSummer3[bktDataSummer3$SiteVisit_ID != '1996-07-09_F_2F074', ]
+
+## make another site-by-year summary to be sure
+# values '3' indicate Ages 'All', '1' & '0' are available
+siteByYearSummNew <- as.data.frame.matrix(table(bktDataSummer3$SiteID, bktDataSummer3$Year))
+
+
+## convert into binary data for a quick summary
+siteByYearSummBinary <- siteByYearSummNew
+siteByYearSummBinary[siteByYearSummBinary > 1] <- 1  # make it to binary
+yearSumm <- apply(siteByYearSummBinary, 2, sum)  # summary by year
+siteSumm <- apply(siteByYearSummBinary, 1, sum)  # summary by site
+table(siteSumm)
+
+## select sites surveyed at least 5 times during 1982-2010
+minYears = 5
+siteByYearSummBinary2 <- cbind(siteByYearSummBinary, siteSumm)
+siteByYearSummBinary2 <- subset(siteByYearSummBinary2, siteSumm >= minYears)
+# 115 sites were sampled at least 5 times between 1982-2010
+## write.csv(siteByYearSummBinary2, "Some115sites1982_2010.csv", row.names=TRUE)
+
+
+## select brook trout count data for 115 sites for analysis
+siteByYearSummBinary2rownames <- cbind(row.names(siteByYearSummBinary2), siteByYearSummBinary2)  # add row.names
+names(siteByYearSummBinary2rownames)[names(siteByYearSummBinary2rownames)=="row.names(siteByYearSummBinary2)"] <- "SiteID"
+### use this "SiteID" as select list
+countData115 <- bktDataSummer3[bktDataSummer3$SiteID %in% siteByYearSummBinary2rownames$SiteID, ]
+
+# check to make sure that sites were selected ok
+length(unique(countData115$SiteID))  # ok: 115 sites
+
+
+## sampling history of 115 sites (3-pass, 1-pass, no sampling)
+sampleHistPrep <- subset(countData115, AGE=='All')
+sampleHist <- aggregate(sampleHistPrep$Removal_Passes, by=list(sampleHistPrep$SiteID, sampleHistPrep$Year), FUN="mean")
+names(sampleHist) <- c("SiteID","Year","nPasses")
+table(sampleHist$nPasses)  # distribution of passes
+## make a wide format
+sampleHistWide <- dcast(sampleHist, SiteID ~ Year, value.var="nPasses")
+#write.csv(sampleHistWide, "sampleHist_115sites.csv", row.names=FALSE)
+```
+
+## Add Julian date
+```{r Julian date}
+## remove duplicate sampling date
+dateDat <- subset(countData115, !duplicated(SiteVisit_ID, fromLast=FALSE))
+
+## add Julian date
+dateDat$julian <- ifelse(dateDat$Month == 6, 151+dateDat$Day, 
+                         ifelse(dateDat$Month == 7, 181+dateDat$Day, 212+dateDat$Day))
+
+## remove unneccesary columns
+dateDat <- dateDat[ , c("SiteVisit_ID","SiteID","Year","Month","Day","julian")]
+
+## standardize julian date
+dateDat$julian.std <- (dateDat$julian - mean(dateDat$julian)) / sd(dateDat$julian)
+
+## make a data array indexed by [site, year]
+julian.std.ar <- acast(dateDat, SiteID ~ Year, value.var="julian.std")
+```
+
+
+                  ####################################################
+                  #### Total prcp during 1 week prior to sampling ####
+                  ####################################################
+                        
+## Read in climate data
+```{r read in data, results='hide'}
+load("G:/Conte/Broad spatial modelling/VA_yoy_count/data/seasonal climate data 115/climData2.RData")
+```
+
+## Total prcp during the preceding 7 days of sampling
+```{r preceding 7 julian days}
+# make 7 new dulian columns
+dateDat$j1 <- dateDat$julian - 1
+dateDat$j2 <- dateDat$julian - 2
+dateDat$j3 <- dateDat$julian - 3
+dateDat$j4 <- dateDat$julian - 4
+dateDat$j5 <- dateDat$julian - 5
+dateDat$j6 <- dateDat$julian - 6
+dateDat$j7 <- dateDat$julian - 7
+
+## melt julian dates
+dateDatLong <- melt(dateDat[, c("SiteVisit_ID","SiteID","Year","j1","j2","j3","j4","j5","j6","j7")],
+                    id.vars=c("SiteVisit_ID","SiteID","Year"),
+                    value.name="precWeek")
+
+## order by SiteVisit_ID
+dateDatLong <- dateDatLong[ order(dateDatLong$SiteVisit_ID), ]
+
+## merge prcp data
+### prcp is mm/day
+dateDatLong$siteID <- substr(dateDatLong$SiteID, 3,9)
+dateDatLong <- merge(dateDatLong, climData2[, c("siteID","year","yday","prcp")],
+                     by.x=c("siteID","Year","precWeek"), by.y=c("siteID","year","yday"))
+
+## calculate total prcp during the preceding week
+weekRain <- aggregate(dateDatLong$prcp, list( dateDatLong$siteID, dateDatLong$Year), sum)
+names(weekRain) <- c("siteID","year","prcpTot")
+
+## standardize total prcp (mm/week)
+weekRain$prcpTot.std <- (weekRain$prcpTot - mean(weekRain$prcpTot)) / sd(weekRain$prcpTot)
+
+## make a data array indexed by [site, year]
+prcpTot.std.ar <- acast(weekRain, siteID ~ year, value.var="prcpTot.std")
+```                         
+
+
+## Keep only "julian.std.ar" & "prcpTot.std.ar"
+```{r keep only "countAr"", eval=FALSE}
+library(gdata)
+keep('julian.std.ar','prcpTot.std.ar', sure=TRUE)
+```
