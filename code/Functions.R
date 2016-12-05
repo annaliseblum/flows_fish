@@ -1,4 +1,4 @@
-##functions
+?##functions
 
 ##createMAFDC
 createMAFDC<-function(x) { #x=dataframe with 2 columns: year and cfs

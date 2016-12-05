@@ -31,7 +31,7 @@ EastHiBC<-merge(EastHi,GAGESIIBasinID,by="site_no")
 #drop extra vars
 Sitelist<-EastHiBC[c("site_no","DRAIN_SQKM","HUC02","LAT_GAGE","LNG_GAGE","STATE")]
 
-summary(as.numeric(Sitelist$HUC02)) #53 sites in huc 02, 73 in huc 07
+#summary(as.numeric(Sitelist$HUC02)) #53 sites in huc 02, 73 in huc 07
 
 Sitelist$HUC02[as.numeric(Sitelist$HUC02)==2]
 
@@ -48,7 +48,7 @@ SitesHUC2$LNG_GAGE<-as.numeric(SitesHUC2$LNG_GAGE)
 # save(rawDailyData, file="data/rawDailyData.rdata")
 
 load("data/rawDailyData.rdata")
-length(unique(rawDailyData$site_no)) #there are 49 sites with flow data from these days (from the 53 originally)
+#length(unique(rawDailyData$site_no)) #there are 49 sites with flow data from these days (from the 53 originally) -now 51?
 
 ####3 - USGS sites basin characteristics from GAGESII ####
 GAGESII_Hydro <- read.csv("data/GAGESII_Hydro.csv",colClasses=c("character",rep("numeric",33))) #fix classes
@@ -74,7 +74,7 @@ save(rawUSGS_BC,file="output/rawUSGS_BC.rdata")
 rawUVA_BC <- read.csv("data/UVAstreamsites.csv") #import site characteristics
 names(rawUVA_BC)[2]<-"site_no" #rename site variable to be consistent with other data sets
 #for some reason, it is the 2nd variable...
-rawUVA_BC$site_no<-as.character(UVA_BC$site_no)
+rawUVA_BC$site_no<-as.character(rawUVA_BC$site_no)
 save(rawUVA_BC,file="output/rawUVA_BC.rdata")
 
 UVA_Discharge <- read.csv("data/SWAS_data.csv") #import discharge data
@@ -85,8 +85,7 @@ save(UVA_Discharge,file="output/UVA_Discharge.rdata")
 #sites
 fishsiteDf <- read.csv("YK/siteDf.csv")
 save(fishsiteDf,file="output/fishsiteDf.rdata")
-names(fishsiteDf)
-fishsiteDf
+# names(fishsiteDf)
 fishsiteDf$Lat_n83<-as.numeric(fishsiteDf$Lat_n83)
 fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
 
@@ -124,9 +123,9 @@ DAYMET86$Date<-as.Date(DAYMET86$date, "%m/%d/%y")
 DAYMET86s<-DAYMET86[c("site_no", "featureid","Date","tmax","tmin", "prcp")] #just variables I'm using
 
 #combine datasets
-names(DAYMETpart1); names(DAYMET86s) #match, good
+#names(DAYMETpart1); names(DAYMET86s) #match, good
 DAYMET<-rbind(DAYMETpart1,DAYMET86s)
-unique(DAYMET$site_no) #173 sites: 115 fish + 5 in SNP +53 USGS = 173
+#unique(DAYMET$site_no) #173 sites: 115 fish + 5 in SNP +53 USGS = 173
 save(DAYMET,file="output/DAYMET.rdata")
 
 #### For Kyle to get DAYMET - Pull Lat and Longs of the selected sites ####

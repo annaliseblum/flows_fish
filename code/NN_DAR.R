@@ -25,6 +25,9 @@ load("output/UVA_daily.rdata")
 
 #### 2 - Prep data sets to compare UVA and USGS ####
 
+#rename from DRAIN_SQKM - why isn't this working??
+names(USGS_BC[2])<-"DA_SQKM"
+
 #create index number for list of USGS gages
 USGS_BC$nearest_usgsG<-1:nrow(USGS_BC) #number the USGS gages to match nearest_usgsG in UVA_LL
 
@@ -36,7 +39,7 @@ USGSdailyNN<-USGSdaily[c("site_no","Date","cfs")] #pull the useful columns
 names(USGSdailyNN)<-c("USGS_site_no","Date","USGS_cfs") #rename
 
 #create USGS data set of only sites with same period of record as UVA
-#summary(UVA_daily) #I think 1993-2010 
+#summary(UVA_daily) #I think 1993-2010 ;one site goes back to oct 1987 (so 4 more years of flows, meh)
 # count(UVA_daily$Date=="1993-01-01") #yep 5 of these
 UVAdailyNN93<-UVA_daily[UVA_daily$Date>"1992-12-31",]
 
@@ -211,16 +214,76 @@ abline(0,0,lty=3)
 abline(v=2.5)
 dev.off()
 
-#### 5 Just UVA for fish sites - Predict daily flow time series ####
+#### 5 - Prep USGS data for fish 1982-1992 ####
+
+#create index number for list of USGS gages
+USGS_BC$nearest_usgsG<-1:nrow(USGS_BC) #number the USGS gages to match nearest_usgsG in UVA_LL
+
+USGSdailyNN82<-USGSdailyNN[USGSdailyNN$Date<"1993-01-01",]
+summary(USGSdailyNN82)
+rec.lengths<-aggregate(USGSdailyNN82$USGS_cfs,by=list(USGSdailyNN82$USGS_site_no),length)
+names(rec.lengths)<-c("USGS_site_no","daysofflow"); summary(rec.lengths)
+USGSrec.lengths<-rec.lengths[rec.lengths$daysofflow==4383,] #37 sites
+USGSdailyNNrecs<-data.frame(merge(USGSdailyNN82, USGSrec.lengths, by = c('USGS_site_no'))) #merge with flow data
+
+SiteList82<-as.data.frame(unique(USGSdailyNNrecs$USGS_site_no))
+names(SiteList82)<-"site_no"
+USGS_BC82<-merge(USGS_BC,SiteList82,by="site_no") #only full record sites
+USGS_LL82<-USGS_BC82[c("LAT_GAGE","LNG_GAGE")]
+
+#### 6 Combo USGS (1982-1992) and UVA (1993-2010) for fish sites - Predict daily flow time series ####
 
 load("output/fishSC.rdata")
 head(fishSC)
 fishLL<-fishSC[c("LAT_GAGE","LNG_GAGE")]
 
-head(UVA_LL);head(USGS_LL)
-UVA_LL$nearest_gage<-NULL
+#first do all predictions for USGS 1982-1992
+#USGS_LL82; USGS_BC82
 
-gaged_sp <- SpatialPoints(gaged_LL)
+gaged_sp <- SpatialPoints(USGS_LL82)
+fish_sp <- SpatialPoints(fishLL)
+fishLL$nearest_gage <- apply(gDistance(gaged_sp, fish_sp, byid=TRUE), 1, which.min) #returns entry number of closest
+USGS_LL82$nearest_gage<-1:nrow(USGS_LL82); head(USGS_LL82)
+names(USGS_LL82)<-c("gaged_LAT","gaged_LNG","nearest_gage")
+
+#merge fish site info with nearest gage numbers
+fishDA<-fishSC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+fishDA2<-merge(fishDA,fishLL,by=c("LAT_GAGE","LNG_GAGE"))
+
+#pull gaged site characteristics to merge those in
+gagedsites<-USGS_BC82[c("site_no","DRAIN_SQKM","LAT_GAGE","LNG_GAGE")]
+names(gagedsites)<-c("gaged_site_no","gaged_DA_SQKM","gaged_LAT","gaged_LNG")
+
+#merge gaged site info into data set with index (called "nearest gage" for later)
+gagedsites2<-merge(gagedsites,USGS_LL82,by=c("gaged_LAT","gaged_LNG"))
+
+#now merge gaged lat and long into master fish data set by nearest gage
+fish_USGSgaged_list<-merge(fishDA2,gagedsites2,by="nearest_gage") #all USGS sites
+save(fish_USGSgaged_list,file="output/fish_USGS4gaged_list.rdata")
+
+#now merge in gaged flow data
+##create daily flows data set of both USGS and UVA data
+head(USGSdailyNN)
+
+##merge in USGS sites flows
+names(USGSdailyNN)[1]<-"gaged_site_no"
+FishUUSGSNN82<-merge(fish_USGSgaged_list, USGSdailyNN,by="gaged_site_no")
+
+FishUUSGSNN82$gaged_DA_SQKM<-as.numeric(FishUUSGSNN82$gaged_DA_SQKM)
+head(FishUUSGSNN82)
+FishUUSGSNN82$cfsperKM2<-FishUUSGSNN82$USGS_cfs/FishUVANN82$gaged_DA_SQKM
+FishUUSGSNN82$NNpredcfs<-FishUUSGSNN82$cfsperKM2*FishUUSGSNN82$DA_SQKM
+save(FishUUSGSNN82,file="output/FishUUSGSNN82.rdata")
+
+FishNN82<-FishUUSGSNN82[c("site_no","Date","NNpredcfs")]
+
+save(FishNN82,file="output/FishNN82.rdata")
+
+##second do all predictions for UVA 1993-2010
+UVA_BC4<-UVA_BC[UVA_BC$DA_SQKM>5,] #REMOVE TINY 2km2 site
+UVA_LL<-UVA_BC4[c("LAT_GAGE","LNG_GAGE")]
+
+gaged_sp <- SpatialPoints(UVA_LL)
 fish_sp <- SpatialPoints(fishLL)
 fishLL$nearest_gage <- apply(gDistance(gaged_sp, fish_sp, byid=TRUE), 1, which.min) #returns entry number of closest
 UVA_LL$nearest_gage<-1:nrow(UVA_LL); head(UVA_LL)
@@ -231,42 +294,43 @@ fishDA<-fishSC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
 fishDA2<-merge(fishDA,fishLL,by=c("LAT_GAGE","LNG_GAGE"))
 
 #pull gaged site characteristics to merge those in
-gagedsites<-gagedsites_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
+gagedsites<-UVA_BC[c("site_no","DA_SQKM","LAT_GAGE","LNG_GAGE")]
 names(gagedsites)<-c("gaged_site_no","gaged_DA_SQKM","gaged_LAT","gaged_LNG")
 
 #merge gaged site info into data set with index (called "nearest gage" for later)
 gagedsites<-merge(gagedsites,UVA_LL,by=c("gaged_LAT","gaged_LNG"))
 
 #now merge gaged lat and long into master fish data set by nearest gage
-fish_UVAgaged_list<-merge(fishDA2,gagedsites,by="nearest_gage") #all UVA sites
-save(fish_UVAgaged_list,file="output/fish_UVAgaged_list.rdata")
+fish_UVA4gaged_list<-merge(fishDA2,gagedsites,by="nearest_gage") #all UVA sites
+save(fish_UVA4gaged_list,file="output/fish_UVA4gaged_list.rdata")
 
 #now merge in gaged flow data
 ##create daily flows data set of both USGS and UVA data
 load("output/UVA_daily.rdata")
 head(UVA_daily)
 UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
-
-table(as.factor(UVA_daily$site_no)) #how many flows available by site?
-rec.length<-aggregate(UVA_daily$site_no,by=list(UVA_daily$site_no),length)
-summary(rec.length) #7-23 years, 5 sites with only 7 years, most with 18 years, some with 23
-names(rec.length)<-c("site_no","days")
-rec.length$years<-rec.length$days/365
+UVAdailyNN93<-UVA_daily[UVA_daily$Date>"1992-12-31",]
 
 ##merge in UVA sites flows
-UVA_dailyNN<-UVA_daily
-names(UVA_dailyNN)[1]<-"gaged_site_no"
-UVA_dailyNN<-merge(fish_UVAgaged_list, UVA_dailyNN,by="gaged_site_no")
+names(UVAdailyNN93)[1]<-"gaged_site_no"
+FishUVANN93<-merge(fish_UVAgaged_list, UVAdailyNN93,by="gaged_site_no")
 
-head(UVA_dailyNN)
-UVA_dailyNN$cfsperKM2<-UVA_dailyNN$cfs/UVA_dailyNN$gaged_DA_SQKM
-UVA_dailyNN$NNpredcfs<-UVA_dailyNN$cfsperKM2*UVA_dailyNN$DA_SQKM
+head(FishUVANN93)
+FishUVANN93$cfsperKM2<-FishUVANN93$cfs/FishUVANN93$gaged_DA_SQKM
+FishUVANN93$NNpredcfs<-FishUVANN93$cfsperKM2*FishUVANN93$DA_SQKM
+save(FishUVANN93,file="output/FishUVANN93.rdata")
 
-dNNUVA.Fish<-UVA_dailyNN[c("site_no","Date","NNpredcfs")]
+FishNN93<-FishUVANN93[c("site_no","Date","NNpredcfs")]
 
-save(dNNUVA.Fish,file="output/dNNUVA.Fish.rdata")
+save(FishNN93,file="output/FishNN93.rdata")
 
-#### 6 Just USGS with full 29 year record for fish sites - Predict daily flow time series ####
+#combine
+str(FishNN82);str(FishNN93)
+FishPredscomb<-rbind(FishNN82,FishNN93)
+
+save(FishPredscomb,file="output/FishPredscomb.rdata")
+
+#### OLD - 6 Just USGS with full 29 year record for fish sites - Predict daily flow time series ####
 
 load("output/fishSC.rdata")
 head(fishSC)

@@ -13,6 +13,12 @@ A.FishNNPredsCC<-A.FishNNPreds[complete.cases(A.FishNNPreds),] #remove observati
 
 ##scale all the variables: now have data set AbuPFlows
 
+#quick residuals plots
+All_mod5<- lmer(log(EstYOYAbu)~(1|site_no)+log(p95summer)+log(p5fall)+log(p95winter)+log(p95spring)
+                +log(MaxTsummer) +log(MaxTfall)+log(MaxTwinter)+log(MaxTspring)
+                ,data=AbuPFlows)
+
+
 #### Randomly drop 10 % of data CV #### 
 #only have nrow(AbuPFlows) = 411
 #Abu_predsGLM<-rep(NA, length=nrow(AbuPFlows))
@@ -93,7 +99,6 @@ RMSE
 #Avg flows: 96.59602, 97.32278, 97.27307, 97.27307,  96.04661
 #magnitude: 97.44834, 97.55723, 97.20289, 97.31532
 #Duration: 95.09962; then 95.52; 95.75; 96.37908
-
 
 
 ##### CV EXAMPLES: #####

@@ -1,8 +1,9 @@
 ##Flow data prep and explore
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
-### Annalise G Blum; Modified Oct 26,2016
-##Data sets created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics; 
-"output/gagedsites_BC.data"
+### Annalise G Blum; Modified Dec 5,2016
+##Data sets created in this file: "output/S.FB.rdata" Seasonal Flow and Basin characteristics;  "output/gagedsites_BC.data"
+
+#rm(list=ls())
 
 library(DataCombine)
 library(ggplot2)
@@ -16,7 +17,7 @@ library(ggplot2)
 #### 8 - Basin Characteristic cleaning
 #### 9 - Merge flows and Basin Characteristics
 
-#load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
+load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
 USGSdaily<-rawDailyData
 
 #### 1 - clean data and bind USGS and UVA data together ####
