@@ -1,0 +1,914 @@
+08-12-2014 Calculate seasonal air temp & precip for Shenandoah data for each of 115 sites
+DayMet data are in 'G:\Conte\Broad spatial modelling\VA_yoy_count\analysis\seasonal climate 115'
+=======================================================================================
+
+```{r working directory & libraries, warning=FALSE, message=FALSE}
+setwd('F:/Conte/Broad spatial modelling/VA_yoy_count/data/seasonal climate data 115/')
+getwd()
+library(reshape2)
+library(ggplot2)
+```
+
+
+```{r read in and organize}
+## read in daymet data from 115 sites
+directory <- 'F:/Conte/Broad spatial modelling/VA_yoy_count/data/seasonal climate data 115/DayMet115/'
+
+## data from each site: run each 3-line chunk together
+fileName <- 'ID1F001_v2.csv'   
+data1F001 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F001$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F003_v2.csv'   
+data1F003 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F003$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F003_1_v2.csv'   
+data1F003_1 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F003_1$siteID <- substr(fileName,3,9)
+
+fileName <- 'ID1F004_v2.csv'   
+data1F004 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F004$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F006_v2.csv'   
+data1F006 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F006$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F007_v2.csv'   
+data1F007 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F007$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F008_v2.csv'   
+data1F008 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F008$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F030_v2.csv'   
+data1F030 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F030$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F031_v2.csv'   
+data1F031 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F031$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F056_v2.csv'   
+data1F056 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F056$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F058_v2.csv'   
+data1F058 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F058$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F116_v2.csv'   
+data1F116 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F116$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F117_v2.csv'   
+data1F117 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F117$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F118_v2.csv'   
+data1F118 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F118$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F132_v2.csv'   
+data1F132 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F132$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F133_v2.csv'   
+data1F133 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F133$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F137_v2.csv'   
+data1F137 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F137$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F138_v2.csv'   
+data1F138 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F138$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1F145_v2.csv'   
+data1F145 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1F145$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1FVA1_v2.csv'   
+data1FVA1 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1FVA1$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1FVA2_v2.csv'   
+data1FVA2 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1FVA2$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID1FVA3_v2.csv'   
+data1FVA3 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data1FVA3$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F009_v2.csv'   
+data2F009 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F009$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F010_v2.csv'   
+data2F010 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F010$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F011_v2.csv'   
+data2F011 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F011$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F015_v2.csv'   
+data2F015 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F015$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F016_v2.csv'   
+data2F016 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F016$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F017_v2.csv'   
+data2F017 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F017$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F029_v2.csv'   
+data2F029 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F029$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F032_v2.csv'   
+data2F032 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F032$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F033_v2.csv'   
+data2F033 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F033$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F034_v2.csv'   
+data2F034 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F034$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F036_v2.csv'   
+data2F036 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F036$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F037_v2.csv'   
+data2F037 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F037$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F038_v2.csv'   
+data2F038 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F038$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F039_v2.csv'   
+data2F039 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F039$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F040_v2.csv'   
+data2F040 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F040$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F047_v2.csv'   
+data2F047 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F047$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F048_v2.csv'   
+data2F048 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F048$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F049_v2.csv'   
+data2F049 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F049$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F050_v2.csv'   
+data2F050 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F050$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F052_v2.csv'   
+data2F052 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F052$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F053_v2.csv'   
+data2F053 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F053$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F054_v2.csv'   
+data2F054 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F054$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F055_v2.csv'   
+data2F055 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F055$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F062_v2.csv'   
+data2F062 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F062$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F063_v2.csv'   
+data2F063 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F063$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F064_v2.csv'   
+data2F064 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F064$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F065_v2.csv'   
+data2F065 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F065$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F067_v2.csv'   
+data2F067 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F067$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F069_v2.csv'   
+data2F069 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F069$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F071_v2.csv'   
+data2F071 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F071$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F072_v2.csv'   
+data2F072 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F072$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F072_1_v2.csv'   
+data2F072_1 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F072_1$siteID <- substr(fileName,3,9)
+
+fileName <- 'ID2F073_v2.csv'   
+data2F073 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F073$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F074_v2.csv'   
+data2F074 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F074$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F075_v2.csv'   
+data2F075 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F075$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F076_v2.csv'   
+data2F076 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F076$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F089_v2.csv'   
+data2F089 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F089$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F090_v2.csv'   
+data2F090 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F090$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F091_v2.csv'   
+data2F091 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F091$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F092_v2.csv'   
+data2F092 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F092$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F093_v2.csv'   
+data2F093 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F093$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F095_v2.csv'   
+data2F095 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F095$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F096_v2.csv'   
+data2F096 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F096$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F110_v2.csv'   
+data2F110 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F110$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F111_v2.csv'   
+data2F111 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F111$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F112_v2.csv'   
+data2F112 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F112$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F113_1_v2.csv'   
+data2F113_1 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F113_1$siteID <- substr(fileName,3,9)
+
+fileName <- 'ID2F114_v2.csv'   
+data2F114 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F114$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F115_v2.csv'   
+data2F115 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F115$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F119_v2.csv'   
+data2F119 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F119$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F120_v2.csv'   
+data2F120 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F120$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F121_v2.csv'   
+data2F121 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F121$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F122_v2.csv'   
+data2F122 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F122$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F129_v2.csv'   
+data2F129 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F129$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F130_v2.csv'   
+data2F130 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F130$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F131_v2.csv'   
+data2F131 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F131$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F134_v2.csv'   
+data2F134 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F134$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F135_v2.csv'   
+data2F135 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F135$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F136_v2.csv'   
+data2F136 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F136$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F139_v2.csv'   
+data2F139 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F139$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2F140_v2.csv'   
+data2F140 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2F140$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2FVA4_v2.csv'   
+data2FVA4 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2FVA4$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID2FVA5_v2.csv'   
+data2FVA5 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data2FVA5$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F018_v2.csv'   
+data3F018 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F018$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F019_v2.csv'   
+data3F019 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F019$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F020_v2.csv'   
+data3F020 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F020$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F023_v2.csv'   
+data3F023 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F023$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F025_v2.csv'   
+data3F025 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F025$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F026_v2.csv'   
+data3F026 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F026$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F041_v2.csv'   
+data3F041 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F041$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F043_v2.csv'   
+data3F043 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F043$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F044_v2.csv'   
+data3F044 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F044$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F045_v2.csv'   
+data3F045 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F045$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F078_v2.csv'   
+data3F078 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F078$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F079_v2.csv'   
+data3F079 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F079$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F080_v2.csv'   
+data3F080 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F080$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F084_v2.csv'   
+data3F084 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F084$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F085_v2.csv'   
+data3F085 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F085$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F086_v2.csv'   
+data3F086 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F086$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F087_v2.csv'   
+data3F087 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F087$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F101_v2.csv'   
+data3F101 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F101$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F102_v2.csv'   
+data3F102 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F102$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F103_v2.csv'   
+data3F103 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F103$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F107_v2.csv'   
+data3F107 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F107$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F108_v2.csv'   
+data3F108 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F108$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F109_v2.csv'   
+data3F109 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F109$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F123_v2.csv'   
+data3F123 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F123$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F124_v2.csv'   
+data3F124 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F124$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F125_v2.csv'   
+data3F125 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F125$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F126_v2.csv'   
+data3F126 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F126$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F128_v2.csv'   
+data3F128 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F128$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F143_v2.csv'   
+data3F143 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F143$siteID <- substr(fileName,3,7)
+
+fileName <- 'ID3F144_v2.csv'   
+data3F144 <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+data3F144$siteID <- substr(fileName,3,7)
+
+
+## merge all of above
+climData <- rbind(data1F001, data1F003, data1F003_1, data1F004, data1F006, data1F007,   
+                  data1F008, data1F030, data1F031, data1F056, data1F058, data1F116, 
+                  data1F117, data1F118, data1F132, data1F133, data1F137, data1F138, 
+                  data1F145, data1FVA1, data1FVA2, data1FVA3, data2F009, data2F010,  
+                  data2F011, data2F015, data2F016, data2F017, data2F029, data2F032, 
+                  data2F033, data2F034, data2F036, data2F037, data2F038, data2F039, 
+                  data2F040, data2F047, data2F048, data2F049, data2F050, data2F052, 
+                  data2F053, data2F054, data2F055, data2F062, data2F063, data2F064,  
+                  data2F065, data2F067, data2F069, data2F071, data2F072, data2F072_1,
+                  data2F073, data2F074, data2F075, data2F076, data2F089, data2F090,   
+                  data2F091, data2F092, data2F093, data2F095, data2F096, data2F110,
+                  data2F111, data2F112, data2F113_1, data2F114, data2F115, data2F119,  
+                  data2F120, data2F121, data2F122, data2F129, data2F130, data2F131,   
+                  data2F134, data2F135, data2F136, data2F139, data2F140, data2FVA4,
+                  data2FVA5, data3F018, data3F019, data3F020, data3F023, data3F025,
+                  data3F026, data3F041, data3F043, data3F044, data3F045, data3F078,  
+                  data3F079, data3F080, data3F084, data3F085, data3F086, data3F087,
+                  data3F101, data3F102, data3F103, data3F107, data3F108, data3F109,
+                  data3F123, data3F124, data3F125, data3F126, data3F128, data3F143, data3F144)
+```
+
+## Rename or remove unnecessary columns and rows
+```{r unnessary columns & rows}
+## rename or remove columns
+climData$dayl..s. <- NULL; climData$srad..W.m.2. <- NULL
+climData$swe..kg.m.2. <- NULL; climData$vp..Pa. <- NULL
+names(climData) <- c("year","yday","tmax","tmin","prcp","siteID")
+
+## subset 1981-2010 data (fish data start from summer 1982)
+climData2 <- subset(climData, year >= 1981 & year <= 2010)
+climData2 <- climData2[,c("siteID","year","yday","tmax","tmin","prcp")]
+```
+
+## Calculate seasonal mean temp & prcp
+```{r seasonal temp & prcp}
+## add month column
+climData2$month <- c(rep(1,31),rep(2,28),rep(3,31),rep(4,30),rep(5,31),rep(6,30),      # Jan-Jun
+                     rep(7,31),rep(8,31),rep(9,30),rep(10,31),rep(11,30),rep(12,31))   # Jul-Dec
+
+## define seasons
+### fall: Sep, Oct & Nov, winter: Dec, Jan & Feb, spring: Mar, Apr & May, summer: Jun, Jul & Aug 
+climData2$season <- ifelse(climData2$month == 1, 'winter',
+                    ifelse(climData2$month == 2, 'winter',
+                    ifelse(climData2$month == 3, 'spring',
+                    ifelse(climData2$month == 4, 'spring',
+                    ifelse(climData2$month == 5, 'spring',
+                    ifelse(climData2$month == 6, 'summer',
+                    ifelse(climData2$month == 7, 'summer',
+                    ifelse(climData2$month == 8, 'summer',
+                    ifelse(climData2$month == 9, 'fall',
+                    ifelse(climData2$month == 10, 'fall',
+                    ifelse(climData2$month == 11, 'fall', 'winter')))))))))))
+
+## define year ID
+nYears=30; nSites=115
+climData2$yearID <- rep(c(rep(NA, 31+28+31+30+31),
+                          rep(1:(nYears-1), each=365),
+                          rep(NA, 30+31+31+30+31+30+31)), nSites)
+```
+
+
+## Regional synchrony
+```{r regional synch}
+## aggreagate by siteID, yearID & season (mean temp)
+monthMeanTemp <- aggregate(x=climData2$tmax, 
+                           by=list(climData2$siteID, climData2$yearID, climData2$season), 
+                           FUN="mean")
+
+## aggreagate by siteID, year & season (total prcp)
+monthTotalPrcp <- aggregate(x=climData2$prcp, 
+                            by=list(climData2$siteID, climData2$yearID, climData2$season), 
+                            FUN="sum")
+
+## combind mean temp & total prcp
+monthClim <- cbind(monthMeanTemp, monthTotalPrcp[,4])
+names(monthClim) <- c("siteID","yearID","season","meanTemp","totalPrcp")
+
+## From wide to long format for ggplot2
+monthClimL <- melt(monthClim, id.var=c("siteID","yearID","season"))
+
+## Graph synchrony among 115 sites
+str(monthClimL)
+monthClimL$season <- factor(monthClimL$season, levels = c("summer","fall","winter","spring"))
+
+## make labeller function before running ggplot
+season_names <- list('summer' = "Summer", 'fall' = "Fall", 'winter' = "Winter", 'spring' = "Spring")
+cov_names <- list('meanTemp' = "Air temperature (°C)", 'totalPrcp' = "Total precipitation (mm)")
+
+plot_labeller <- function(variable,value){
+  if (variable=='season'){
+    return(season_names[value])
+  } else {
+    return(cov_names[value])
+  }
+}
+
+ggplot(monthClimL, 
+  aes(x=yearID, y=value, group=siteID)) + geom_line() + 
+  facet_grid(variable ~ season, scales="free_y", labeller=plot_labeller) +
+  xlab("Study year") +
+  ylab("") + 
+  theme_bw() +
+  theme(legend.background=element_rect(fill='white', colour='black'),
+              legend.title=element_blank(),
+              panel.border=element_rect(colour='black'),
+              panel.background=element_rect(fill='white', colour='black'),
+              panel.grid.major=element_line(colour=NA),
+              panel.grid.minor=element_line(colour=NA),
+              axis.title.x= element_text(size=12, face="bold", vjust=0),
+              axis.title.y= element_text(size=12, face="bold", vjust=.3, angle=90),
+              axis.text.x= element_text(size=12),
+              axis.text.y= element_text(size=12),
+              strip.text.x= element_text(size=12, face="bold"),
+              strip.text.y= element_text(size=12, face="bold"))
+
+### Rename study years
+monthClimL$yearID2 <- ifelse(monthClimL$yearID == 1, 1982,
+                      ifelse(monthClimL$yearID == 2, 1983,
+                      ifelse(monthClimL$yearID == 3, 1984, 
+                      ifelse(monthClimL$yearID == 4, 1985,
+                      ifelse(monthClimL$yearID == 5, 1986,
+                      ifelse(monthClimL$yearID == 6, 1987,
+                      ifelse(monthClimL$yearID == 7, 1988,
+                      ifelse(monthClimL$yearID == 8, 1989,
+                      ifelse(monthClimL$yearID == 9, 1990,
+                      ifelse(monthClimL$yearID == 10, 1991,
+                      ifelse(monthClimL$yearID == 11, 1992,
+                      ifelse(monthClimL$yearID == 12, 1993,
+                      ifelse(monthClimL$yearID == 13, 1994,
+                      ifelse(monthClimL$yearID == 14, 1995,
+                      ifelse(monthClimL$yearID == 15, 1996,
+                      ifelse(monthClimL$yearID == 16, 1997, 
+                      ifelse(monthClimL$yearID == 17, 1998,
+                      ifelse(monthClimL$yearID == 18, 1999,
+                      ifelse(monthClimL$yearID == 19, 2000,
+                      ifelse(monthClimL$yearID == 20, 2001,
+                      ifelse(monthClimL$yearID == 21, 2002,
+                      ifelse(monthClimL$yearID == 22, 2003,
+                      ifelse(monthClimL$yearID == 23, 2004,
+                      ifelse(monthClimL$yearID == 24, 2005,
+                      ifelse(monthClimL$yearID == 25, 2006,
+                      ifelse(monthClimL$yearID == 26, 2007,
+                      ifelse(monthClimL$yearID == 27, 2008,
+                      ifelse(monthClimL$yearID == 28, 2009,2010))))))))))))))))))))))))))))
+
+## Graph for Shen manuscript #2
+## All 29 years
+weatherTrend <- ggplot(monthClimL, aes(x=yearID2, y=value, group=siteID)) + 
+  geom_line() + 
+  facet_grid(variable ~ season, scales="free_y", labeller=plot_labeller) +
+  scale_x_continuous(breaks=c(1985,1995,2005)) +
+  xlab("") +
+  ylab("") + 
+  theme_bw() +
+  theme(legend.background=element_rect(fill='white', colour='black'),
+              legend.title=element_blank(),
+              panel.border=element_rect(colour='black'),
+              panel.background=element_rect(fill='white', colour='black'),
+              panel.grid.major=element_line(colour=NA),
+              panel.grid.minor=element_line(colour=NA),
+              axis.title.x= element_text(size=12, face="bold", vjust=0),
+              axis.title.y= element_text(size=12, face="bold", vjust=.3, angle=90),
+              axis.text.x= element_text(size=12, angle=-60, hjust=0),
+              axis.text.y= element_text(size=12),
+              strip.text.x= element_text(size=12, face="bold"),
+              strip.text.y= element_text(size=12, face="bold"))
+
+dpiIn <- 300
+ggsave( file=paste(getwd(),'/seasonal weather trend.png',sep=''), plot=weatherTrend, dpi=dpiIn , width=6, height=3, units='in',scale=2 )
+
+
+## Another graph for Shen manuscript #2
+## Just 1996-2010 using based on sites used for YOY trend analysis
+
+### Read in a csv file used for YOY trend graph
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/analysis/model 1.0/'
+fileName <- 'yoyTrendSites.csv'   
+yoyTrendSitesDf <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+
+weatherTrend2 <- ggplot(subset(monthClimL[monthClimL$siteID %in% yoyTrendSitesDf$siteID, ], yearID > 14), 
+  aes(x=yearID2, y=value, group=siteID)) + geom_line() + 
+  facet_grid(variable ~ season, scales="free_y", labeller=plot_labeller) +
+  scale_x_continuous(breaks=c(2000,2005,2010)) +
+  xlab("") +
+  ylab("") + 
+  theme_bw() +
+  theme(legend.background=element_rect(fill='white', colour='black'),
+              legend.title=element_blank(),
+              panel.border=element_rect(colour='black'),
+              panel.background=element_rect(fill='white', colour='black'),
+              panel.grid.major=element_line(colour=NA),
+              panel.grid.minor=element_line(colour=NA),
+              axis.title.x= element_text(size=12, face="bold", vjust=0),
+              axis.title.y= element_text(size=12, face="bold", vjust=.3, angle=90),
+              axis.text.x= element_text(size=12, angle=-60, hjust=0),
+              axis.text.y= element_text(size=12),
+              strip.text.x= element_text(size=12, face="bold"),
+              strip.text.y= element_text(size=12, face="bold"))
+
+dpiIn <- 300
+ggsave( file=paste(getwd(),'/seasonal weather trend2.png',sep=''), plot=weatherTrend2, dpi=dpiIn , width=6, height=3, units='in',scale=2 )
+```
+
+## seasonal summary table for SHEN ms #2
+```{r seasonal weather summary}
+summTable <- aggregate(monthClim[c("meanTemp","totalPrcp")], 
+                       by=list(monthClim$yearID, monthClim$season), FUN="mean")
+names(summTable) <- c("year","season","meanTemp","totalPrcp")
+# temperature
+tapply(summTable$meanTemp, summTable$season, summary)
+# prcp
+tapply(summTable$totalPrcp, summTable$season, summary)
+```
+
+
+## Compare most nothern (1F133) and southern site (3F143)
+## This is a remnant of GCB paper. Needs to double-check or delete
+```{r most northern vs southern}
+### Extract these two sites
+monthClimL.NS <- monthClimL[monthClimL$siteID %in% c('1F133','3F143'), ]
+
+### rename cov
+monthClimL.NS$cov <- ifelse(monthClimL.NS$season=='fall' & monthClimL.NS$variable=='meanTemp','fallTemp', 
+                     ifelse(monthClimL.NS$season=='winter' & monthClimL.NS$variable=='meanTemp','winterTemp',
+                     ifelse(monthClimL.NS$season=='spring' & monthClimL.NS$variable=='meanTemp','springTemp',
+                     ifelse(monthClimL.NS$season=='summer' & monthClimL.NS$variable=='meanTemp','summerTemp',
+                     ifelse(monthClimL.NS$season=='fall' & monthClimL.NS$variable=='totalPrcp','fallPrcp', 
+                     ifelse(monthClimL.NS$season=='winter' & monthClimL.NS$variable=='totalPrcp','winterPrcp',
+                     ifelse(monthClimL.NS$season=='spring' & monthClimL.NS$variable=='totalPrcp','springPrcp',
+                            'summerPrcp')))))))
+
+### make a column indicating "north" or "south"
+monthClimL.NS$lat <- ifelse(monthClimL.NS$siteID == '1F133', 'most_northern', 'most_southern')
+
+### from long to wide for ggplot
+monthClimW.NS <- dcast(monthClimL.NS, yearID + season + variable + cov ~ lat, value.var="value")
+
+### graph correlation among most nothern and southern sites
+ggplot(monthClimW.NS[monthClimW.NS$cov %in% c('fallTemp','fallPrcp','winterTemp','winterPrcp','springTemp','springPrcp'), ], aes(x=most_northern, y=most_southern)) + geom_point(size=3) + 
+  #geom_abline(intercept = 0, slope = 1, colour = "red", size = 1.1, linetype="dashed") +
+  facet_wrap(variable ~ season, ncol=3, scales="free") +
+  xlab("Most northern site") +
+  ylab("Most southern site") +
+  theme_bw() +
+  theme(legend.background=element_rect(fill='white', colour='black'),
+              legend.title=element_blank(),
+              panel.border=element_rect(colour='black'),
+              panel.background=element_rect(fill='white', colour='black'),
+              panel.grid.major=element_line(colour=NA),
+              panel.grid.minor=element_line(colour=NA),
+              axis.title.x= element_text(size=12, face="bold", vjust=0),
+              axis.title.y= element_text(size=12, face="bold", vjust=.3, angle=90),
+              axis.text.x= element_text(size=12),
+              axis.text.y= element_text(size=12),
+              strip.text.x= element_text(size=12, face="bold"),
+              strip.text.y= element_text(size=12, face="bold"))
+```
+
+
+## Check correlation among seasonal temp & prcp
+```{r check correlation}
+## mean meanTEMP across sites for each year/season combo
+seasonTempCor <- aggregate(x=climData2$tmax, 
+                           by=list(climData2$yearID, climData2$season), 
+                           FUN="mean")
+names(seasonTempCor) <- c("yearID","season","meanTemp")
+
+## from long to wide
+seasonTempCorW <- dcast(seasonTempCor, yearID~season, value.var="meanTemp")
+names(seasonTempCorW) <- c("yearID","fallTemp","springTemp","summerTemp","winterTemp")
+
+
+## mean totalPRCP across sites for each year/season combo
+seasonPrcpCor <- aggregate(x=climData2$prcp, 
+                            by=list(climData2$yearID, climData2$season), 
+                            FUN="sum")
+names(seasonPrcpCor) <- c("yearID","season","totalPrcp")
+seasonPrcpCor$totalPrcp2 <- seasonPrcpCor$totalPrcp/72  # this is to calculate site-scale mean
+
+## from long to wide
+seasonPrcpCorW <- dcast(seasonPrcpCor, yearID~season, value.var="totalPrcp2")  #use totalPrcp2!!
+names(seasonPrcpCorW) <- c("yearID","fallPrcp","springPrcp","summerPrcp","winterPrcp")
+
+
+## Merge temp & prcp data frame
+seasonClimCorW <- merge(seasonTempCorW, seasonPrcpCorW)
+
+
+# function for pearson correlation (http://www2.warwick.ac.uk/fac/sci/moac/people/students/peter_cock/r/iris_plots/)
+panel.pearson <- function(x, y, ...) {
+  horizontal <- (par("usr")[1] + par("usr")[2]) / 2; 
+  vertical <- (par("usr")[3] + par("usr")[4]) / 2; 
+  text(horizontal, vertical, format(cor(x,y), digits=2)) 
+}
+
+pairs(seasonClimCorW[,c("summerTemp","fallTemp","winterTemp","springTemp","summerPrcp","fallPrcp","winterPrcp","springPrcp")], main="Correlation among seasonal climate covariates",
+      upper.panel=panel.pearson)
+```
+
+
+## Make site*year array for each seasonal covariate (standardized)
+```{r seasonal covariate}
+# make a long data frame for each seasonal covariate
+summerTempDf <- subset(monthClimL, season == 'summer' & variable == 'meanTemp')
+fallTempDf <- subset(monthClimL, season == 'fall' & variable == 'meanTemp')
+winterTempDf <- subset(monthClimL, season == 'winter' & variable == 'meanTemp')
+springTempDf <- subset(monthClimL, season == 'spring' & variable == 'meanTemp')
+summerPrcpDf <- subset(monthClimL, season == 'summer' & variable == 'totalPrcp')
+fallPrcpDf <- subset(monthClimL, season == 'fall' & variable == 'totalPrcp')
+winterPrcpDf <- subset(monthClimL, season == 'winter' & variable == 'totalPrcp')
+springPrcpDf <- subset(monthClimL, season == 'spring' & variable == 'totalPrcp')
+
+# convert to a wide data frame
+summerTempDf2 <- dcast(summerTempDf, siteID~yearID, value.var="value")
+fallTempDf2 <- dcast(fallTempDf, siteID~yearID, value.var="value")
+winterTempDf2 <- dcast(winterTempDf, siteID~yearID, value.var="value")
+springTempDf2 <- dcast(springTempDf, siteID~yearID, value.var="value")
+summerPrcpDf2 <- dcast(summerPrcpDf, siteID~yearID, value.var="value")
+fallPrcpDf2 <- dcast(fallPrcpDf, siteID~yearID, value.var="value")
+winterPrcpDf2 <- dcast(winterPrcpDf, siteID~yearID, value.var="value")
+springPrcpDf2 <- dcast(springPrcpDf, siteID~yearID, value.var="value")
+
+# import a list of site order used for statistical analysis
+directory <- 'G:/Conte/Broad spatial modelling/VA_yoy_count/data/fish data 115/'
+fileName <- 'sampleHist_115sites.csv'   
+siteOrderDf <- as.data.frame(read.csv(file=paste( directory,fileName, sep='' ), header=TRUE))
+siteOrderVec <- as.character(substr(siteOrderDf$SiteID, 3,9))
+
+# reorder the above set of df according to the imported list
+summerTempDf2[match(siteOrderVec, summerTempDf2$siteID), ]
+fallTempDf2[match(siteOrderVec, fallTempDf2$siteID), ]
+winterTempDf2[match(siteOrderVec, winterTempDf2$siteID), ]
+springTempDf2[match(siteOrderVec, springTempDf2$siteID), ]
+summerPrcpDf2[match(siteOrderVec, summerPrcpDf2$siteID), ]
+fallPrcpDf2[match(siteOrderVec, fallPrcpDf2$siteID), ]
+winterPrcpDf2[match(siteOrderVec, winterPrcpDf2$siteID), ]
+springPrcpDf2[match(siteOrderVec, springPrcpDf2$siteID), ]
+
+# convert from data frame to array
+summerTempAry <- array(summerTempDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+fallTempAry <- array(fallTempDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+winterTempAry <- array(winterTempDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+springTempAry <- array(springTempDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+summerPrcpAry <- array(summerPrcpDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+fallPrcpAry <- array(fallPrcpDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+winterPrcpAry <- array(winterPrcpDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+springPrcpAry <- array(springPrcpDf2[,2:30], dimnames=list(paste("Site",1:115,sep=''),paste("Year",1:29,sep='')))
+
+# standardize across years for each site
+summerTempAryStd <- fallTempAryStd <- winterTempAryStd <- springTempAryStd <- array(NA, dim=c(115,29)) 
+summerPrcpAryStd <- fallPrcpAryStd <- winterPrcpAryStd <- springPrcpAryStd <- array(NA, dim=c(115,29))
+  
+summerTempAryStd <- data.matrix( (summerTempAry - apply(summerTempAry,1,mean)) / apply(summerTempAry,1,sd) )
+fallTempAryStd <- data.matrix( (fallTempAry - apply(fallTempAry,1,mean)) / apply(fallTempAry,1,sd) )
+winterTempAryStd <- data.matrix( (winterTempAry - apply(winterTempAry,1,mean)) / apply(winterTempAry,1,sd) )
+springTempAryStd <- data.matrix( (springTempAry - apply(springTempAry,1,mean)) / apply(springTempAry,1,sd) )
+summerPrcpAryStd <- data.matrix( (summerPrcpAry - apply(summerPrcpAry,1,mean)) / apply(summerPrcpAry,1,sd) )
+fallPrcpAryStd <- data.matrix( (fallPrcpAry - apply(fallPrcpAry,1,mean)) / apply(fallPrcpAry,1,sd) )
+winterPrcpAryStd <- data.matrix( (winterPrcpAry - apply(winterPrcpAry,1,mean)) / apply(winterPrcpAry,1,sd) )
+springPrcpAryStd <- data.matrix( (springPrcpAry - apply(springPrcpAry,1,mean)) / apply(springPrcpAry,1,sd) )
+```
+#write.csv(springPrcpDf2, file="springPrcpDf2.csv", row.names=FALSE)
+#write.csv(summerPrcpDf2, file="summerPrcpDf2.csv", row.names=FALSE)
+
+
+## Correlation among standardized covs
+```{r}
+# vectorize arrays
+summerPrcpVecStd <- as.vector(summerPrcpAryStd)
+fallPrcpVecStd <- as.vector(fallPrcpAryStd)
+winterPrcpVecStd <- as.vector(winterPrcpAryStd)
+springPrcpVecStd <- as.vector(springPrcpAryStd)
+summerTempVecStd <- as.vector(summerTempAryStd)
+fallTempVecStd <- as.vector(fallTempAryStd)
+winterTempVecStd <- as.vector(winterTempAryStd)
+springTempVecStd <- as.vector(springTempAryStd)
+
+seasonClimCorStdW <- as.data.frame(cbind(summerTempVecStd, fallTempVecStd, winterTempVecStd, springTempVecStd,
+                                         summerPrcpVecStd, fallPrcpVecStd, winterPrcpVecStd, springPrcpVecStd))
+                    
+names(seasonClimCorStdW) <- c("summerT","fallT","winterT","springT",
+                              "summerP","fallP","winterP","springP")
+
+pairs(seasonClimCorStdW, main="Correlation among standaridized \nseasonal climate covariates", pch=1, cex=0.8,  upper.panel=panel.pearson)         
+
+# Graph above is too busy. Take some random points 20 %
+pairs(seasonClimCorStdW[sample(1:nrow(seasonClimCorStdW), nrow(seasonClimCorStdW)*0.2, replace=F), ], main="Correlation among standaridized \nseasonal climate covariates", pch=1, cex=0.8,  upper.panel=panel.pearson)  
+```
+
+## PCA?
+```{r PCA}
+# season only
+pr.cr1 <- princomp(seasonClimCorW[,c(2,3,5,6,7,9)], cor = TRUE) # this should standardize
+summary(pr.cr1)
+loadings(pr.cr1)
+plot(pr.cr1)
+biplot(pr.cr1)
+
+# season only: standardized outside of PCA
+# this is equivalent to cor =TRUE above
+seasonClimCorW2 <- seasonClimCorW[,c(2,3,5,6,7,9)]
+seasonClimCorW2$fallTempStd <- (seasonClimCorW2$fallTemp - mean(seasonClimCorW2$fallTemp))/sd(seasonClimCorW2$fallTemp)
+seasonClimCorW2$winterTempStd <- (seasonClimCorW2$winterTemp - mean(seasonClimCorW2$winterTemp))/sd(seasonClimCorW2$winterTemp)
+seasonClimCorW2$springTempStd <- (seasonClimCorW2$springTemp - mean(seasonClimCorW2$springTemp))/sd(seasonClimCorW2$springTemp)
+seasonClimCorW2$fallPrcpStd <- (seasonClimCorW2$fallPrcp - mean(seasonClimCorW2$fallPrcp))/sd(seasonClimCorW2$fallPrcp)
+seasonClimCorW2$winterPrcpStd <- (seasonClimCorW2$winterPrcp - mean(seasonClimCorW2$winterPrcp))/sd(seasonClimCorW2$winterPrcp)
+seasonClimCorW2$springPrcpStd <- (seasonClimCorW2$springPrcp - mean(seasonClimCorW2$springPrcp))/sd(seasonClimCorW2$springPrcp)
+
+pr.cr2 <- princomp(seasonClimCorW2[,7:12])
+summary(pr.cr2)
+loadings(pr.cr2)
+plot(pr.cr2)
+biplot(pr.cr2)
+```
+
+
+```{r How often high & low conditions happened?}
+apply(summerPrcpAryStd, 2, mean)
+apply(fallPrcpAryStd, 2, mean)
+apply(winterPrcpAryStd, 2, mean)
+apply(springPrcpAryStd, 2, mean)
+apply(summerTempAryStd, 2, mean)
+apply(fallTempAryStd, 2, mean)
+apply(winterTempAryStd, 2, mean)
+apply(springTempAryStd, 2, mean)
+```
+
+
+
+## export
+```{r export}
+library(gdata)
+keep('summerTempAryStd', 'fallTempAryStd','winterTempAryStd','springTempAryStd',
+     'summerPrcpAryStd', 'fallPrcpAryStd','winterPrcpAryStd','springPrcpAryStd', sure=TRUE)
+```
