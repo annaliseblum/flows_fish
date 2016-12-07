@@ -29,17 +29,16 @@ source(file="code/FlowPrep.R") #with NN only need section 1 of this data set...
 source(file="code/FishPrep.R")
 source(file="code/WeatherPrep.R")
 
+## NN - DAR flow predictions ##
+source(file="code/New_NN.R")
+source(file="code/FlowMets.R")
+source(file="code/PredFlowMets.R")
+
 ## Combine data sets ###
 source(file="code/Combine.R")
 
 #Explore - make comparison plots #
 #source(file="code/Explore.R")
-
-## Predict time series of daily flows - NN DAR ##
-#source(file="code/NN_DAR.R")
-
-## Estimate extreme flow metrics from NN-DAR predicted daily flows ##
-#source(file="code/NNmetricsPred.R")
 
 ## Compare GOF of fish prediction models ##
 #CV

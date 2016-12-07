@@ -1,12 +1,13 @@
 ##Merge all the data for the USGS gaged sites together
 ###Annalise Blum
-#July 18,2016  Updated: Oct 4,2016
+#July 18,2016  Updated: Dec 5,2016
 ##Data sets created in this file: "output/S.Fish.rdata"; "output/A.Fish.rdata"; "output/S.Flow.rdata"
 
 #run SitesImport.R, FlowPrep.R, WeatherPrep.R, FishPrep.R,
 #or just load the prepared data sets:
-load("output/S.FB.rdata") #flows with basin characteristics
+#load("output/S.FB.rdata") #flows with basin characteristics
 load("output/gagedsites_BC.rdata") #Just basin characteristics
+load("output/A.Fishmerge.rdata") #predicted flow Metrics for fish sites - annual level
 
 #fish
 load("output/fish_YAbu.rdata") #All fish data 1982-2010 for 115 sites
@@ -19,11 +20,11 @@ load("output/aDAYMET.rdata") #weather - Annual
 
 #### 1 - Merge GAGED sites with weather ####
 #check for consistent variable types across data sets: SEASONAL DATA SET OR ANNUAL LEVEL (SEASONS WIDE??)
-class(SDAYMET$site_no); class(S.FB$site_no)
-class(SDAYMET$Nyear); class(S.FB$Nyear)
-class(SDAYMET$Nseason); class(S.FB$Nseason)
+class(SDAYMET$site_no); class(Preds_metrics$site_no)
+class(SDAYMET$Nyear); class(Preds_metrics$Nyear)
+class(SDAYMET$Nseason); class(Preds_metrics$Nseason)
 
-S.Flow<-merge(S.FB,SDAYMET,by=c("site_no","Nyear","Nseason")) #Should I be using weather from annual dataset but melted wide??aDAYMET
+S.Flow<-merge(Preds_metrics,SDAYMET,by=c("site_no","Nyear","Nseason"))
 
 save(S.Flow,file="output/S.Flow.rdata")
 
@@ -53,7 +54,7 @@ length(unique(A.FW$site_no)) #Good, all 115 sites are there
 A.Fish<-merge(A.FW,fishSC,by="site_no")
 str(A.Fish)
 summary(A.Fish)
-length(unique(A.Fish$site_no)) #34 sites all made it! again!
+length(unique(A.Fish$site_no))
 
 #save
 save(A.Fish,file="output/A.Fish.rdata")
@@ -71,6 +72,17 @@ names(A.Fish) #compare to annual
 
 #save
 save(S.Fish,file="output/S.Fish.rdata")
+
+## Merge A.Fish and Flow predictions on annual level
+
+All_fish<-merge(A.Fish,A.Fishmerge,by=c("site_no","Nyear"))
+save(All_fish,file="output/All_fish.rdata")
+
+#merge in the Julian Day that the sample was taken - WHATS HAPPENING HERE??
+# load("output/JulianDay.rdata")
+# JulianDay<-JulianDay[JulianDay$Nyear<30,]
+# All_fish1<-merge(All_fish,JulianDay,by=c("site_no","Nyear"))
+
 
 #### OLD ####
 #fish

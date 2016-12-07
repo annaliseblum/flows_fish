@@ -1,5 +1,5 @@
 ##Import Raw Data and save as r data sets for fish and extreme flows project
-##Created: July 5, 2016 Updated: Sept 30,2016
+##Created: July 5, 2016 Updated: Dec 5,2016
 ##Annalise Blum annaliseblum@gmail.com
 
 #rm(list=ls())
@@ -84,15 +84,28 @@ save(UVA_Discharge,file="output/UVA_Discharge.rdata")
 
 #sites
 fishsiteDf <- read.csv("YK/siteDf.csv")
-save(fishsiteDf,file="output/fishsiteDf.rdata")
 # names(fishsiteDf)
 fishsiteDf$Lat_n83<-as.numeric(fishsiteDf$Lat_n83)
 fishsiteDf$Lon_n83<-as.numeric(fishsiteDf$Lon_n83)
+save(fishsiteDf,file="output/fishsiteDf.rdata")
 
 #data
 #load array with fish data from kanno folder
 load("~/flows_fish/YK/countArray 115 sites.rdata")
 save(countAr,file="output/countAr.rdata")
+
+#information on Julian day of sampling
+Stats_Rev2 <- read.csv("YK/W_FI_MICOFISH_Stats_Rev2.csv")
+JulianDay<-Stats_Rev2[c("SiteID","Year","Month","Day")]
+
+## add Julian date
+JulianDay$julian <- ifelse(JulianDay$Month == 6, 151+JulianDay$Day, 
+                         ifelse(JulianDay$Month == 7, 181+JulianDay$Day, 212+JulianDay$Day)) #ignore leap years
+JulianDay$Nyear<-JulianDay$Year-1981
+JulianDay$site_no<-substr(JulianDay$SiteID,3,9)
+JulianDay<-JulianDay[c("site_no","julian","Nyear")]
+
+save(JulianDay,file="output/JulianDay.rdata")
 
 ####6 - Import DAYMET data ####
 

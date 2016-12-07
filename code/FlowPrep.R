@@ -42,6 +42,8 @@ UVA_daily<-aggregate(UVA_Discharge$cfs,by=list(UVA_Discharge$StationID,UVA_Disch
                                                UVA_Discharge$month,UVA_Discharge$day),mean)
 names(UVA_daily)<-c("site_no","year","month","day","cfs")
 
+UVA_daily$site_no<-paste("UVA_",UVA_daily$site_no,sep="")
+
 #need this dataset to match daily - get date variable into date format
 str(USGSdaily); names(USGSdaily) #site_no" "Date"    "cfs"     "month"   "year" 
 str(UVA_daily); names(UVA_daily) 
@@ -57,13 +59,14 @@ names(UVA_daily);names(USGSdaily)
 #drop data after 2010
 UVA_daily<-UVA_daily[UVA_daily$year<2011,]
 save(UVA_daily,file="output/UVA_daily.rdata")
+
 #sum(UVA_daily$cfs==0)/length(UVA_daily$cfs) #=0.0162 are zeros
 
 #Combine USGS and UVA sites
 USGSdaily$type<-"USGS"
 UVA_daily$type<-"UVA"
 
-#rbind USGS data (USGSdaily) and UVA data (UVA_daily)
+#rbind USGS data (USGSdaily) and UVA data (UVA_daily) - why am I doing this??
 daily<-rbind(USGSdaily,UVA_daily)
 length(unique(daily$site_no)) #49 USGS sites + 5 UVA sites =54
 
@@ -73,7 +76,7 @@ daily$Nyear<-ifelse(daily$month<6,daily$year-1981,daily$year-1980) #to get years
 #remove years without all 365 days of flow data
 YearTally <- aggregate(daily$cfs,by=list(daily$site_no, daily$Nyear),FUN=length) #drop years without 365 days of data
 names(YearTally)<-c("site_no","Nyear","daysperNyr")
-sum(YearTally$daysperNyr<365) #44 years with <365 flow values
+#sum(YearTally$daysperNyr<365) #44 years with <365 flow values
 df1<-data.frame(merge(daily, YearTally, by = c('site_no','Nyear'))) #merge with flow data
 df2<-df1[df1$daysperNyr>364,] #remove years with less than 365 days of data
 length(unique(df2$site_no)) #53 sites (lost 1 USGS one that didn't have any complete flow years)

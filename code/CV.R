@@ -4,6 +4,26 @@
 ##Created August 19, 2016; Last modified: Nov 27, 2016
 ##Data sets created in this file: 
 
+#test distributions
+require(car)
+require(MASS)
+# This is so that distributions that must be non-zero can make sense of my
+# data
+A.FishNNPredsCC$MaxTsummer.test <- A.FishNNPredsCC$MaxTsummer+1
+qqp(A.FishNNPredsCC$MaxTsummer+1, "norm")
+qqp(A.FishNNPredsCC$EstYOYAbu+.01, "lnorm")
+
+#more complicated distributions
+nbinom <- fitdistr(A.FishNNPredsCC$MaxTsummer+1, "Negative Binomial")
+qqp(A.FishNNPredsCC$MaxTsummer+1, "nbinom", size = nbinom$estimate[[1]], mu = nbinom$estimate[[2]])
+
+gamma <- fitdistr(A.FishNNPredsCC$Pnov+.01, "gamma")
+qqp(A.FishNNPredsCC$Pnov+.01, "gamma", shape = gamma$estimate[[1]], rate = gamma$estimate[[2]])
+
+poisson <- fitdistr(A.FishNNPredsCC$Pnov+.01, "Poisson")
+qqp(A.FishNNPredsCC$Pnov+.01, "pois", poisson$estimate)
+
+
 #load("output/UVAA.FishNNPreds.rdata") #with UVA sites used in NN
 load("output/A.FishNNPreds.rdata") #just USGS sites used in NN
 
@@ -12,6 +32,7 @@ summary(A.FishNNPreds); names(A.FishNNPreds)
 A.FishNNPredsCC<-A.FishNNPreds[complete.cases(A.FishNNPreds),] #remove observations with ANY missing values
 
 ##scale all the variables: now have data set AbuPFlows
+AbuPFlows<-A.FishNNPredsCC
 
 #quick residuals plots
 All_mod5<- lmer(log(EstYOYAbu)~(1|site_no)+log(p95summer)+log(p5fall)+log(p95winter)+log(p95spring)
