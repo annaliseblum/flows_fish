@@ -31,13 +31,13 @@ max(test$DurLFfall)
 #To avoid standardizing Nyear, pull it out: L_A.FishPreds[[1]][2:ncol(L_A.FishPreds[[1]])]
 # (summer and fall weather variables are all missing because of year 1 NA, but ok for now)
 #initalize with first site
-StdData<-as.data.frame(sapply(L_A.FishPreds[[1]][2:(ncol(L_A.FishPreds[[1]])-4)],standard)) #this exludes first column which is Nyear
+StdData<-as.data.frame(sapply(L_A.FishPreds[[1]][2:(ncol(L_A.FishPreds[[1]]))],standard)) #this exludes first column which is Nyear
 StdData<-as.data.frame(c(L_A.FishPreds[[1]][1],StdData)) #add year back in - same order? seems like it - hopefully
 StdData$site_no<-names(L_A.FishPreds[1])
 
 #loop through the other sites
 for (i in 2: length(L_A.FishPreds)){
-  iStdData<-as.data.frame(sapply(L_A.FishPreds[[i]][2:(ncol(L_A.FishPreds[[i]])-4)],standard)) #standardize all vars except Nyear
+  iStdData<-as.data.frame(sapply(L_A.FishPreds[[i]][2:(ncol(L_A.FishPreds[[i]]))],standard)) #standardize all vars except Nyear
   iStdData<-as.data.frame(c(L_A.FishPreds[[i]][1],iStdData)) #first column is Nyear
   iStdData$site_no<-names(L_A.FishPreds[i])
   # iDroughtFlood<-as.data.frame(L_A.FishPreds[i])[,23:26]
@@ -55,22 +55,16 @@ save(StdDataPreds2,file="output/StdDataPreds2.rdata")
 load("output/All_fish2.rdata"); head(All_fish2)
 
 #######TO DO:
-#need to add"Std" to begining of standardized variables
-colnames(UVAStdDataPreds) <- paste("Std", colnames(UVAStdDataPreds), sep = "")
-Nyear<-UVAStdDataPreds$StdNyear; UVAStdDataPreds<-cbind(Nyear,UVAStdDataPreds)
-site_no<-UVAStdDataPreds$Stdsite_no; UVAStdDataPreds<-cbind(site_no,UVAStdDataPreds)
-
-UVAStdDataPreds$StdNyear<-NULL;UVAStdDataPreds$StdEstYOYAbu<-NULL;
-UVAStdDataPreds$Stdsite_no<-NULL
-
-#get rid of duplicates:
-UVAStdDataPreds$StdEstYOYAbu<-NULL
-UVAStdDataPreds$StdDroPredfall<-NULL;UVAStdDataPreds$StdDroPredsummer<-NULL
-UVAStdDataPreds$StdFloodPredwinter<-NULL;UVAStdDataPreds$StdFloodPredspring<-NULL
+#need to add"Std" to begining of standardized variables (all execept first and last variables site and year)
+dim(StdDataPreds2)
+colnames(StdDataPreds2)[2:(ncol(StdDataPreds2)-1)] #site_no is last unfortunately
+colnames(StdDataPreds2)[2:(ncol(StdDataPreds2)-1)] <- paste("Std", colnames(StdDataPreds2)[2:(ncol(StdDataPreds2)-1)], sep = "")
 
 #merge
-A.FishNNPredsS<-merge(A.FishNNPreds,UVAStdDataPreds,by=c("site_no","Nyear"))
-A.FishNNPredsS$site_no<-as.factor(A.FishNNPredsS$site_no)
+A.FishNNPredsS<-merge(All_fish2,StdDataPreds2,by=c("site_no","Nyear"))
+#A.FishNNPredsS$site_no<-as.factor(A.FishNNPredsS$site_no) #not sure why i did this
+
+save(A.FishNNPredsS,file="output/A.FishNNPredsS.rdata")
 
 #### 4 - Make arrays for JAGS ####
 
@@ -140,6 +134,9 @@ DurLFfallStd$site_no<-NULL
 colnames(DurLFfallStd)<-paste("Year",colnames(DurLFfallStd),sep="")
 DurLFfallStd<-as.matrix(DurLFfallStd)
 str(DurLFfallStd)
+
+#replace NAs with 0
+DurLFfallStd[is.na(DurLFfallStd)]<-0 #some sites with all 0s, messed up still
 
 #winter
 DurHFwinStd <- dcast(StdDataPreds, site_no ~ Nyear,value.var = "DurHFwinter")

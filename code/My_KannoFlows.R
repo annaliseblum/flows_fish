@@ -40,9 +40,9 @@ nCovs=8
 dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
             y=countAr,  # three-pass of both adults & YOY
             summer.temp=MaxP1fallStd, fall.temp=fallTempAryStd, #summerTempAryStd
-            winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
+            winter.temp=DurLFfallStd, spring.temp=springTempAryStd, #MagLFfallStd instead of winter temp
             SummerFlow=MaxP1winStd, FallFlow=MaxP1springStd,
-            WinterFlow=MagHFwinStd, SpringFlow=MagHFspringStd,
+            WinterFlow=MagHFwinStd, SpringFlow=AvgQspringStd,
             elev=elev.std, lat=lat.std,
             julian=julian.std.ar, prcpTot=prcpTot.std.ar, area=area.std)
 
@@ -105,11 +105,11 @@ init <- function() list( mu=runif(nAges,0,5),
 #started at 2:15pm; done at 3:43 pm
 nc=3;ni=50000; nt=20; nb=10000
 pars <- c("mu","sigmaN2","sigma2.b","b",
-          "p.mean","p.b","b.day","b.site","g.0") 
+          "p.mean","p.b","b.day","b.site","g.0","g.1","g.2","g.3") #re-run with gs
 # pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
 #           "p.mean","p.b","b.day","b.site","eps") 
 library(jagsUI)
-outJUI_Dec8 <- jags( #started 9:35, done at 11:10
+outJUI_Dec11 <- jags( #started 9:35, done at 11:10
   data=dat,
   inits=init,
   model = paste("code/New my yoy model 1.r", sep=""),

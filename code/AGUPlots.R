@@ -3,40 +3,54 @@
 load("output/All_fish2.rdata") #Use this version where they are predicted from daily values
 All_fishCC<-All_fish2[complete.cases(All_fish2),] #remove observations with ANY missing values
 
+##how did I get All_fishCC_S ??
+
+load("output/A.FishNNPredsS.rdata") 
+All_fishCC_S<-A.FishNNPredsS[complete.cases(A.FishNNPredsS),] #remove observations with ANY missing values
+
+save(A.FishNNPredsS_CC,file="output/A.FishNNPredsS_CC.rdata")
+
 # Figure 1 box plots and trend of estimated abundance
 pdf("plots/P1_AbuTS.pdf",width=8,height=5) #
 ggplot(All_fishCC, aes(x=as.factor(Nyear), y=EstYOYAbu)) + theme_bw() + #, color=as.factor(fish_site))
-  geom_boxplot(fill="grey")+ geom_smooth(se=F, aes(group=1),color="darkgreen")+coord_cartesian(ylim=c(0, 500)) +
+  geom_boxplot(fill="grey")+coord_cartesian(ylim=c(0, 500)) +
   labs(x = "",y="Estimated YOY Abundance")
 dev.off()
 
 # Table 1 - comparison of models assess - just AIC
-R1<-lmer(log(EstYOYAbu)~(1|site_no)+log(Pfall)+log(Pwinter)+log(Pspring) 
-         +log(MaxTfall)+log(MaxTwinter)+log(MaxTspring)
-         +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
-                  ,data=All_fishCC, REML=F)
+R1s<-lmer(log(EstYOYAbu)~(1|site_no)+StdPfall+StdPwinter+StdPspring
+         +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+         +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+                  ,data=All_fishCC_S, REML=F)
 
-R7durNEW<-lmer(log(EstYOYAbu)~(1|site_no)+log(DurLFfall+.05)+log(DurHFwinter+.05)+log(DurHFspring+.05) 
-            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
-            +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
-            ,data=All_fishCC, REML=F); summary(R7durNEW)
+R7durNEW<-lmer(log(EstYOYAbu)~(1|site_no)+StdDurLFfall+StdDurHFwinter+StdDurHFspring
+               +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+               +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+            ,data=All_fishCC_S, REML=F); summary(R7durNEW)
 
 summary(R7dur)
 anova(R1,R7durNEW)
 anova(R1,R7avg,R7mag,R7durNEW)
 
-R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+log(p95spring) +log(p95winter)
-            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
-            +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
-            ,data=All_fishCC, REML=F); #summary(R7mag)
+R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+Stdp5fall+Stdp95winter +Stdp95spring
+            +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+            +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+            ,data=All_fishCC_S, REML=F); #summary(R7mag)
 
-R7avg<-lmer(log(EstYOYAbu)~(1|site_no)+log(AvgQfall)+log(AvgQwinter)+log(AvgQspring) 
-            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
-            +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
-                        ,data=All_fishCC, REML=F)
+R7avg<-lmer(log(EstYOYAbu)~(1|site_no)+StdAvgQfall+StdAvgQwinter+StdAvgQspring
+            +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+            +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+                        ,data=All_fishCC_S, REML=F)
 summary(R7avg)
 anova(R1,R7dur,R7mag,R7avg)
 anova(R7avg,R7mag)
+
+#final modeL:
+
+R7magS<-lmer(log(EstYOYAbu)~(1|site_no)+Stdp5fall+Stdp95winter +Stdp95spring
+             +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+             +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+             ,data=All_fishCC_S, REML=F); summary(R7magS)
 
 # Figure 2 - side by side 3-D plots showing extreme precip more useful than total precip (and my flows even more useful??)
 # # - use 1 color getting darker not rainbow
@@ -44,11 +58,6 @@ anova(R7avg,R7mag)
 # - research smoothing for these plots to remove misleading bumps (maybe I can do this by rounding my data!!)
 
 summary(All_fishCC)
-
-#round variables to smooth plot
-All_fishCC$rAvgQfall<-round(All_fishCC$AvgQfall)
-All_fishCC$rp95winter<-round(All_fishCC$p95winter)
-All_fishCC$rEstYOYAbu<-round(All_fishCC$EstYOYAbu)
 
 install.packages("viridis")
 library(viridis)
@@ -111,29 +120,72 @@ summary(lm(EstYOYAbu~maxP1fall+maxP1winter+maxP1spring,data=All_fishCC))
 #   b[5,i,j]*summer.temp[i,t] + b[6,i,j]*fall.temp[i,t] +
 #   b[7,i,j]*winter.temp[i,t] + b[8,i,j]*spring.temp[i,t] 
 
+#7th is low flow fall now
 # summer.temp=MaxP1fallStd, fall.temp=fallTempAryStd, #summerTempAryStd
-# winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
+# winter.temp=MagLFfallStd, spring.temp=springTempAryStd, #MagLFfallStd instead of winter temp
 # SummerFlow=MaxP1winStd, FallFlow=MaxP1springStd,
-# WinterFlow=AvgQwinterStd, SpringFlow=AvgQspringStd,
+# WinterFlow=MagHFwinStd, SpringFlow=MagHFspringStd,
 
-pdf("plots/maxPAvgTestflows.pdf") #
+##NEW
+outJUI_Dec8Mag<-outJUI_Dec8Mag2
+pdf("plots/MagmaxP_AGU.pdf",width=8, height=6) #
 #labels
-labels=paste(c("MaxP1winStd","MaxP1springStd","AvgQwinterStd","AvgQspringStd","MaxP1fallStd","Fall Temp","Winter Temp","Spring Temp"))
-par(mar = c(7, 4, 4, 2) + 0.1)
+labels=paste(c("fall","winter","spring"))
+par(mar = c(4, 6, 4, 2))
 ## Create plot with no x axis and no x axis label
-boxplot(outJUI_Dec8$sims.list$g.0[,1,1],outJUI_Dec8$sims.list$g.0[,2,1],outJUI_Dec8$sims.list$g.0[,3,1],outJUI_Dec8$sims.list$g.0[,4,1],
-        outJUI_Dec8$sims.list$g.0[,5,1],outJUI_Dec8$sims.list$g.0[,6,1],outJUI_Dec8$sims.list$g.0[,7,1],outJUI_Dec8$sims.list$g.0[,8,1],
-        col = c("gold","orange","lightblue","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
-        main="Magnitude of low (5%ile) and high (95%) flows")
+boxplot(outJUI_Dec8$sims.list$g.0[,7,1],outJUI_Dec8$sims.list$g.0[,3,1],outJUI_Dec8$sims.list$g.0[,4,1],
+        outJUI_Dec8$sims.list$g.0[,5,1],outJUI_Dec8$sims.list$g.0[,1,1],outJUI_Dec8$sims.list$g.0[,2,1],
+        #moved 5th coefficient to 1st spot so that fall max precip is first in precip list; moved flow magnitude vars to be first in order
+        col = c("orange","grey","lightgreen","orange","grey","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        ) #main="Flow magnitude and maximum daily precipitation"
 axis(1, at=1:8,labels = FALSE)
-## Plot x axis labels at default tick marks
+# Plot x axis labels at default tick marks
 text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
      labels = labels, xpd = TRUE)
 abline(0,0)
+abline(v=3.5,lty=3)
 dev.off()
 
+##New
+
+pdf("plots/Dec12_AGU.pdf",width=8, height=6) #
+#labels
+labels=paste(c("fall","winter","spring"))
+par(mar = c(4, 6, 4, 2))
+## Create plot with no x axis and no x axis label
+boxplot(outJUI_Dec11$sims.list$g.0[,7,1],outJUI_Dec11$sims.list$g.0[,3,1],outJUI_Dec11$sims.list$g.0[,4,1],
+        outJUI_Dec11$sims.list$g.0[,5,1],outJUI_Dec11$sims.list$g.0[,1,1],outJUI_Dec11$sims.list$g.0[,2,1],
+        #moved 5th coefficient to 1st spot so that fall max precip is first in precip list; moved flow magnitude vars to be first in order
+        col = c("orange","grey","lightgreen","orange","grey","lightgreen"),  xaxt="n", xlab="",ylab="effect size"
+) #main="Flow magnitude and maximum daily precipitation"
+axis(1, at=1:8,labels = FALSE)
+# Plot x axis labels at default tick marks
+text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+     labels = labels, xpd = TRUE)
+abline(0,0)
+abline(v=3.5,lty=3)
+dev.off()
+# pdf("plots/MagmaxP_AGU.pdf") #
+# #labels
+# labels=paste(c("Winter high flow","Spring high flow","Fall max precip","Winter max precip","Spring max precip","Fall temp","Winter temp","Spring temp"))
+# par(mar = c(7, 4, 4, 2) + 0.1)
+# ## Create plot with no x axis and no x axis label
+# boxplot(outJUI_Dec8$sims.list$g.0[,3,1],outJUI_Dec8$sims.list$g.0[,4,1],outJUI_Dec8$sims.list$g.0[,5,1],outJUI_Dec8$sims.list$g.0[,1,1],outJUI_Dec8$sims.list$g.0[,2,1],
+#          #moved 5th coefficient to 1st spot so that fall max precip is first in precip list; moved flow magnitude vars to be first in order
+#         outJUI_Dec8$sims.list$g.0[,6,1],outJUI_Dec8$sims.list$g.0[,7,1],outJUI_Dec8$sims.list$g.0[,8,1],
+#         col = c("gold","orange","grey","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+#         main="Winter and Spring High flows")
+# axis(1, at=1:8,labels = FALSE)
+# ## Plot x axis labels at default tick marks
+# text(1:8, par("usr")[3] - 0.03, srt = 45, adj = 1,
+#      labels = labels, xpd = TRUE)
+# abline(0,0)
+# dev.off()
+
+
+
 #compare to
-R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+log(maxP1winter)+log(maxP1spring)+log(AvgQwinter) +log(AvgQspring)+log(maxP1fall)+
+R7mag<-lmer(log(EstYOYAbu)~(1|site_no)log(p95winter) +log(p95spring)+log(maxP1fall)+log(maxP1winter)+log(maxP1spring)+
           log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
             ,data=All_fishCC, REML=F); #summary(R7mag)
 summary(R7mag)
@@ -177,3 +229,60 @@ qplot(log(A.FishNNPredsCC$EstYOYAbu), predict(R10),
 qplot(A.FishNNPredsCC$EstYOYAbu, exp(predict(R10)),
       xlab="Empirical",
       ylab="Predicted",main="Brook Trout YOY Abundance: Power law Model") +geom_abline(intercept = 0, slope = 1)
+
+##OLD ####
+
+#with log-log:
+# Table 1 - comparison of models assess - just AIC
+R1<-lmer(log(EstYOYAbu)~(1|site_no)+log(Pfall)+log(Pwinter)+log(Pspring) 
+         +log(MaxTfall)+log(MaxTwinter)+log(MaxTspring)
+         +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
+         ,data=All_fishCC, REML=F)
+
+R7durNEW<-lmer(log(EstYOYAbu)~(1|site_no)+log(DurLFfall+.05)+log(DurHFwinter+.05)+log(DurHFspring+.05) 
+               +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
+               +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
+               ,data=All_fishCC, REML=F); summary(R7durNEW)
+
+summary(R7dur)
+anova(R1,R7durNEW)
+anova(R1,R7avg,R7mag,R7durNEW)
+
+R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+log(p95spring) +log(p95winter)
+            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
+            +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
+            ,data=All_fishCC, REML=F); #summary(R7mag)
+
+R7avg<-lmer(log(EstYOYAbu)~(1|site_no)+log(AvgQfall)+log(AvgQwinter)+log(AvgQspring) 
+            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
+            +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
+            ,data=All_fishCC, REML=F)
+summary(R7avg)
+anova(R1,R7dur,R7mag,R7avg)
+
+##Correlation
+#final model
+# StdDurLFfall+Stdp95winter+StdDurHFspring+
+#   +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+# +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+
+CorrFinalModel<-A.FishNNPredsS_CC[c("DurLFfall","p95winter","AvgQspring","MaxTfall", "MaxTwinter","MaxTspring",
+                                    "maxP1fall","maxP1winter","maxP1spring")]
+pdf("plots/Corr_Summer.pdf")
+pairs(~DurLFfall+p95winter+DurHFspring+
+        MaxTfall + MaxTwinter + MaxTspring+
+      maxP1fall+maxP1winter+maxP1spring,
+      data=A.FishNNPredsS_CC, lower.panel = panel.smooth,
+      upper.panel= panel.cor, main="Covariate correlation")
+dev.off()
+
+install.packages("corrplot")
+library(corrplot)
+M <- cor(A.FishNNPredsS_CC[c("DurLFfall","p95winter","AvgQspring","MaxTfall", "MaxTwinter","MaxTspring",
+                             "maxP1fall","maxP1winter","maxP1spring")])
+pdf("plots/Corr_AGU.pdf")
+corrplot(M, method="circle")
+dev.off()
+
+corrplot.mixed(M)
+anova(R7avg,R7mag)

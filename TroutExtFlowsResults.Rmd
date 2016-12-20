@@ -1,0 +1,106 @@
+---
+title: "Brook Trout Abundance and Extreme Flows - Results"
+author: "Annalise Blum"
+date: "12/20/2016"
+output: html_document #doesn't work when I switch to pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2); library("corrplot"); library(viridis); library(akima); library(rworldmap)
+load("output/All_fishCC.rdata")
+load("output/A.FishNNPredsS_CC.rdata")
+
+```
+
+## Research questions
+
+1. How do seasonal extremes in climate and streamflow affect brook trout young-of-the-year abundance?
+***To answer*** look at sign and magnitude of coefficients (effect sizes) in models of abundance
+2.  Which seasonal weather metrics (seasinal averages, daily maximum precipitation or daily maximum temperature) and flow metrics (magnitude, duration, or average flow) are most useful in explaining next summer brook trout abundance?
+***To answer***  look at goodness of fit (lowest AIC, other metrics?) of models with competing metrics
+3. Are there thresholds in these at which there is a clear change in abundance?
+***To answer***  identify cut-offs with regression trees (other methods? piece-wise) and evaluate whether dummies for above or below threshold
+
+## First, some exploratory plots
+
+### YOY abundance over the 29 study years (1982-2010)
+I estimated abundance by summing the 3 pass counts and dividing by detection rate from Kanno et al (2016) model (0.569)
+
+```{r,echo=F}
+
+ggplot(All_fishCC, aes(x=as.factor(Nyear), y=EstYOYAbu)) + theme_bw() +
+  geom_boxplot(fill="grey")+coord_cartesian(ylim=c(0, 600)) +
+  labs(x = "",y="Estimated YOY Abundance")
+
+```
+*7 abundances > 600 not shown*
+
+### Variability across sites of seasonal precipitation
+Most variability across sites for high precipitation and in spring
+```{r,echo=F}
+
+ggplot(All_fishCC, aes(x=as.factor(Nyear), y=Pfall)) + theme_bw() +
+  geom_boxplot(fill="gold")+
+  labs(x = "",y="Fall precip (mm)")
+ggplot(All_fishCC, aes(x=as.factor(Nyear), y=Pwinter)) + theme_bw() +
+  geom_boxplot(fill="blue")+
+  labs(x = "",y="Winter precip (mm)")
+ggplot(All_fishCC, aes(x=as.factor(Nyear), y=Pspring)) + theme_bw() +
+  geom_boxplot(fill="lightgreen")+
+  labs(x = "",y="Spring precip (mm)")
+
+```
+
+*Year 1 missing because I used year as seasons before sampling and I need to get precipitation data for 1981*
+
+### Correlation of variables
+High correlation between daily maximum temperature variables across seasons and winter and spring flows
+```{r, echo=FALSE}
+M <- cor(A.FishNNPredsS_CC[c("DurLFfall","p95winter","AvgQspring","MaxTfall", "MaxTwinter","MaxTspring",
+                             "maxP1fall","maxP1winter","maxP1spring")])
+corrplot(M, method="circle")
+```
+
+### Plots with contors: patterns in abundance most clear with extreme winter flow and max daily fall precip
+Seasonal precipitation in fall and winter vs abundance
+
+```{r,echo=F}
+d3plot1 <- with(All_fishCC, interp(x= Pfall , y= Pwinter, z=EstYOYAbu, duplicate="mean"))
+filled.contour(d3plot1,
+               xlab="Fall precipitation (mm)",
+               ylab="Winter precipitation (mm)",
+               color.palette=plasma,nlevels=6,
+               plot.axes={points(All_fishCC$Pfall, All_fishCC$Pwinter,col="grey30")} 
+)
+```
+
+Extreme precipitation in fall and winter vs abundance
+
+``` {r,echo=F}
+d3plot2 <- with(All_fishCC, interp(x= maxP1fall , y= maxP1winter, z=EstYOYAbu, duplicate="mean"))
+filled.contour(d3plot2,
+               xlab="Max daily fall precipitation (mm)",
+               ylab="Max daily winter precipitation (mm)",
+               color.palette=plasma,nlevels=6,
+               plot.axes={points(All_fishCC$maxP1fall, All_fishCC$maxP1winter,col="grey30")}
+               )
+```
+
+Extreme precipitation in fall and winter high flows vs abundance
+``` {r,echo=F}
+d3plot3 <- with(All_fishCC, interp(x= maxP1fall , y= p95winter, z=EstYOYAbu, duplicate="mean"))
+filled.contour(d3plot3,
+               xlab="Max daily fall precipitation (mm)",
+               ylab="95%ile flow winter (cfs)",
+               color.palette=plasma,nlevels=6,
+               plot.axes={points(All_fishCC$maxP1fall, All_fishCC$p95winter,col="grey30")}
+               )
+```
+               
+### Regression trees to identify thresholds
+
+### Model comparison: Seasonal precip, average flows, magnitude metric, duration metric, dummy for "threshold"
+
+### Effect size from MCMC samples in JAGS model
+
