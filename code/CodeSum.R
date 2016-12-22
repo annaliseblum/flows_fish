@@ -1,5 +1,5 @@
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
-### Annalise G Blum, Ben H Letcher, Richard M Vogel
+### Annalise G Blum, Ben H Letcher, Yoichiro Kanno, Richard M Vogel
 
 #rm(list = setdiff(ls(), lsf.str())) #clears all variables except functions
 

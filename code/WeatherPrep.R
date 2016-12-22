@@ -4,11 +4,17 @@
 ##Created:July 18, 2016, last modified: Sept 28,2016
 ##Data sets created in this file: "output/SDAYMET.rdata"; "output/aDAYMET.rdata"
 
+library(DataCombine)
 ##Need to keep everything consistent as "fish years" which are june - may 
 #years are preceeding fish counts (summer and fall obs are used to predict next year's YOY)
 
 load("output/DAYMET.rdata")
 length(unique(DAYMET$site_no)) #173=53 USGS + 5 UVA + 115 Fish
+
+#but only need for fish sites now
+DAYMET$type<-ifelse(nchar(DAYMET$site_no)>7,"gage","fish") #both USGS and UVA have length 8, longest fish is 7
+DAYMETf<-DAYMET[DAYMET$type=="fish",]
+DAYMET<-DAYMETf #rename for ease of calculations below
 
 #### 1 - Prep and collapse to Seasonal level #### 
 names(DAYMET); head(DAYMET); tail(DAYMET); str(DAYMET)
@@ -32,34 +38,84 @@ DAYMET$Nseason[DAYMET$season=="fall"]<-2
 DAYMET$Nseason[DAYMET$season=="winter"]<-3
 DAYMET$Nseason[DAYMET$season=="spring"]<-4
 
-#add F_ back to the begining of the site numbers - CANT GET THIS TO WORK
-#test<-ifelse(nchar(DAYMET$site_no==8),paste(DAYMET$site_no),paste("F_",DAYMET$site_no,sep=""))
+#create an average daily temperature variable
+DAYMET$tavg<-(DAYMET$tmax+DAYMET$tmin)/2
+
+#make sure sorted to enable slides and 7day averages
+DAYMET.s<-DAYMET[order(DAYMET$site_no,DAYMET$Date),] #make sure order is correct
+#DAYMET.s[1:100,]; tail(DAYMET.s); DAYMET.s[1050:1200,]#spot check
+
+##add rolling average 7-day max temperature value
+#slide data forward and back 3 day to get 7 day totals around each day
+sortDAYMETS<-slide(DAYMET.s, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxL1", slideBy = -1)
+sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxL2", slideBy = -2)
+sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxL3", slideBy = -3)
+
+sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxF1", slideBy = 1)
+sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxF2", slideBy = 2)
+sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxF3", slideBy = 3)
+
+##add rolling average 7-day precip value
+
+sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL1", slideBy = -1)
+sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL2", slideBy = -2)
+sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL3", slideBy = -3)
+
+sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF1", slideBy = 1)
+sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF2", slideBy = 2)
+sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF3", slideBy = 3)
+
+slidDAYMETS<-sortDAYMETS
+
+#number of consecutive days with P< 1 mm and P <=1mm
+slidDAYMETS$ZeroPrec<-(slidDAYMETS$prcp==0)
+slidDAYMETS$U1Prec<-(slidDAYMETS$prcp<2)
+# sum(slidDAYMETS$ZeroPrec)/length(slidDAYMETS$ZeroPrec) #0.695 of days have zero precip
+# sum(slidDAYMETS$U1Prec)/length(slidDAYMETS$ZeroPrec) #7157 of days have 1 mm or less precip
+
+
+#from http://stackoverflow.com/questions/5012516/count-how-many-consecutive-values-are-true
+cumul_zeros <- function(x)  {
+  x <- !x
+  rl <- rle(x)
+  len <- rl$lengths
+  v <- rl$values
+  cumLen <- cumsum(len)
+  z <- x
+  # replace the 0 at the end of each zero-block in z by the 
+  # negative of the length of the preceding 1-block....
+  iDrops <- c(0, diff(v)) < 0
+  z[ cumLen[ iDrops ] ] <- -len[ c(iDrops[-1],FALSE) ]
+  # ... to ensure that the cumsum below does the right thing.
+  # We zap the cumsum with x so only the cumsums for the 1-blocks survive:
+  x*cumsum(z)
+}
+
+slidDAYMETS$cum0prcp<-cumul_zeros(slidDAYMETS$prcp)
+slidDAYMETS$cumU1prcp<-cumul_zeros(as.numeric((slidDAYMETS$prcp>1)))
+
+# #was going to use find 5%ile flow by site, found have to just use non-zero precip days (or else 5%ile is 0 for all sites)
+# DAYMETnon0prp<-slidDAYMETS[slidDAYMETS$prcp>0,]
+# prcp.05<-aggregate(DAYMETnon0prp$prcp,by=list(DAYMETnon0prp$site_no),FUN=quantile,probs=0.05,type=6)
+# names(prcp.05)<-c("site_no","nonzero5pPrec") #but most are 1 mm
 
 #collapse to seasonal level
-DAYMET$tally<-1
-SDAYMET <- ddply(DAYMET, .(site_no, Nyear,season), summarize, 
+slidDAYMETS$tally<-1
+SDAYMET <- ddply(slidDAYMETS, .(site_no, Nyear,season), summarize, 
                 daysperseason=sum(tally),
                 totprecip = sum(prcp, na.rm = T),
                 avgtmax = mean(tmax, na.rm = T),
                 avgtmin = mean(tmin, na.rm = T),
+                avgtavg = mean(tavg, na.rm = T),
                 Nseason = mean(Nseason, na.rm = T),
+                maxP1day = max(prcp, na.rm = T),
+                maxcons0p = max(cum0prcp, na.rm = T), #longest consecutive days 0 precip - change to under 1?
+                maxconsU1p = max(cumU1prcp, na.rm = T), #longest consecutive days 1 mm or less precip
                 year = max(year, na.rm = T) #to check - different years within seasons so this is chosing the year that goes with dec
 )
 
 #head(SDAYMET);tail(SDAYMET); str(SDAYMET); summary(SDAYMET)
 
-##create previous Nyear winter and spring vars to help predict summer and fall LFs
-#sort
-#sort data
-SDAYMETS<-SDAYMET[order(SDAYMET$site_no,SDAYMET$Nyear,SDAYMET$Nseason),] #make sure order is correct
-#SDAYMETS[1:100,]; tail(SDAYMETS) #spot check
-
-#slide data
-SDAYMET_slide<-slide(SDAYMETS, Var= "totprecip", GroupVar= "site_no", NewVar= "totprecipL1", slideBy = -1)
-SDAYMET_slide<-slide(SDAYMET_slide, Var= "totprecip", GroupVar= "site_no", NewVar= "totprecipL2", slideBy = -2)
-SDAYMET_slide<-slide(SDAYMET_slide, Var= "avgtmax", GroupVar= "site_no", NewVar= "avgtmaxL1", slideBy = -1)
-SDAYMET_slide<-slide(SDAYMET_slide, Var= "avgtmax", GroupVar= "site_no", NewVar= "avgtmaxL2", slideBy = -2)
-SDAYMET<-SDAYMET_slide
 save(SDAYMET,file="output/SDAYMET.rdata")
 
 #### 2- Add monthly Precip, max daily precip and max 3 day precip ####

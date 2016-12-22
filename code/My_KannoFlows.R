@@ -39,10 +39,10 @@ nCovs=8
 # bundle data
 dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
             y=countAr,  # three-pass of both adults & YOY
-            summer.temp=MaxP1fallStd, fall.temp=fallTempAryStd, #summerTempAryStd
-            winter.temp=DurLFfallStd, spring.temp=springTempAryStd, #MagLFfallStd instead of winter temp
-            SummerFlow=MaxP1winStd, FallFlow=MaxP1springStd,
-            WinterFlow=MagHFwinStd, SpringFlow=AvgQspringStd,
+            summer.temp=summerTempAryStd, fall.temp=fallTempAryStd, #summerTempAryStd
+            winter.temp=winterTempAryStd, spring.temp=springTempAryStd, #MagLFfallStd instead of winter temp
+            SummerFlow=summerPrcpAryStd, FallFlow=fallPrcpAryStd,
+            WinterFlow=winterPrcpAryStd, SpringFlow=springPrcpAryStd,
             elev=elev.std, lat=lat.std,
             julian=julian.std.ar, prcpTot=prcpTot.std.ar, area=area.std)
 
@@ -67,58 +67,35 @@ dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
 # WinterFlow=MagHFwinStd, SpringFlow=MagHFspringStd, 
 
 ## set initial values
-init <- function() list( mu=runif(nAges,0,5),
-                         eps=array(runif(nSites*nYears*nAges,-1,1), c(nSites,nYears,nAges)),
-                         b=array(rnorm(nCovs*nSites*nAges,0,2), c(nCovs,nSites,nAges)),
+init <- function() list( mu=array(runif(nSites*nAges,0,5), c(nSites,nAges)), #runif(nAges,0,5),
+                         b=array(rnorm(nCovs*nAges,0,2), c(nCovs,nAges)),
                          sigmaN=runif(nAges,0,3), #replaced 2 with nAges
                          sigma.b=array(runif(nCovs*nAges,0,3), c(nCovs,nAges)),
-                         g.0=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)), #trying loop without site-specific vars predicting Bs
-                         g.1=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
-                         g.2=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
-                         g.3=array(rnorm(nCovs*nAges,0), c(nCovs,nAges)),
                          p.mean=rep(0.5,nAges), p.b=array(rnorm(3*nAges,0,0.5), c(3,nAges)), #p.mean=rep(0.5,nAges) from 2
                          N=array(500, dim=c(nSites, nYears, nAges)),
                          b.day=runif(nAges,-2,2),
                          b.site=array(rnorm(3*nAges,0,0.5), c(3,nAges)))
 
-# ## Running JAGS
-# ## sequential
-# set.seed(234)
-# StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
-#                           dat, init, n.chains=3, n.adapt=100000)
-# 
-# ## concise summary
-# Niter=50000
-# Nthin=20
-# pars <- c("mu","sigmaN2","sigma2.b","g.0",
-#           "p.mean","p.b","b.day","b.site","N") 
-# outpaperFull <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin) #same as paper: 115 sites and 29 years
-# 
-# summary(out1)
-# plot(out1)
-# 
-# outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
-# save(outpaperFull_df,file="output/outpaperFull_df.rdata")
-
-
 ##with JAAGUI - started at 11: am pm - ended 1 pm! with 3 cores
-#started at 2:15pm; done at 3:43 pm
+#started at 2:40pm; done at 4:10 pm
 nc=3;ni=50000; nt=20; nb=10000
 pars <- c("mu","sigmaN2","sigma2.b","b",
-          "p.mean","p.b","b.day","b.site","g.0","g.1","g.2","g.3") #re-run with gs
+          "p.mean","p.b","b.day","b.site") #re-run with gs ,"g.0","g.1","g.2","g.3"
 # pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
 #           "p.mean","p.b","b.day","b.site","eps") 
 library(jagsUI)
-outJUI_Dec11 <- jags( #started 9:35, done at 11:10
+outJUI_Dec21_ss <- jags(
   data=dat,
   inits=init,
-  model = paste("code/New my yoy model 1.r", sep=""),
+  model = paste("code/my yoy model 3.r", sep=""),
   parameters.to.save = pars,
   n.chains=nc,
   n.iter = ni,
   n.thin = nt,
   n.burnin=nb,
   parallel=T)
+
+outJUI_Dec21 # one intercept
 
 summary(outJUI_Dec8)
 save(outJUI_Dec8,file="output/outJUI_Dec8.rdata") #with max P1
@@ -169,5 +146,25 @@ y.est[,,,1] <- N.est*p.est
 y.est[,,,2] <- N.est*(1-p.est)*p.est
 y.est[,,,3] <- N.est*(1-p.est)*(1-p.est)*p.est
 
+
+
+# ## Running JAGS
+# ## sequential
+# set.seed(234)
+# StageBurnin <- jags.model(paste("YK/shen yoy model 3.5.r", sep=""),
+#                           dat, init, n.chains=3, n.adapt=100000)
+# 
+# ## concise summary
+# Niter=50000
+# Nthin=20
+# pars <- c("mu","sigmaN2","sigma2.b","g.0",
+#           "p.mean","p.b","b.day","b.site","N") 
+# outpaperFull <- coda.samples(StageBurnin, pars, n.iter=Niter, n.thin=Nthin) #same as paper: 115 sites and 29 years
+# 
+# summary(out1)
+# plot(out1)
+# 
+# outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
+# save(outpaperFull_df,file="output/outpaperFull_df.rdata")
 
 

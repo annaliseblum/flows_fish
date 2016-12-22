@@ -9,15 +9,25 @@ rm(list=ls())
 load("output/All_fish2.rdata") #Use this version where they are predicted from daily values
 #duration works better
 All_fishCC<-All_fish2[complete.cases(All_fish2),] #remove observations with ANY missing values
+save(All_fishCC,file="output/All_fishCC.rdata") #Use this version where they are predicted from daily values
+
+#with standardized variables too
+load("output/A.FishNNPredsS.rdata")
+
+A.FishNNPredsS_CC<-A.FishNNPredsS[!is.na(A.FishNNPredsS$EstYOYAbu),] #remove observations with YOY abund. missing values
+A.FishNNPredsS_CC<-A.FishNNPredsS_CC[!is.na(A.FishNNPredsS_CC$MaxTfall),] #remove observations with YOY abund. missing values
+
+A.FishNNPredsS_CC[is.na(A.FishNNPredsS_CC)]<-0 #replace missing weather and flows as 0
+#Duration still messed up 377 NAs
+
 
 #regression to pred RE
 load("output/fishSC.rdata") #all the site characteristics available
 
-R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+log(p95spring) +log(p95winter)
+R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+log(p5fall+.05)+log(p95spring) +log(p95winter)
             +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
             +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
-            ,data=All_fishCC, REML=F); #summary(R7mag)
-length(ranef(R7mag)$site_no)
+            ,data=All_fishCC, REML=F); summary(R7mag)
 
 REdf<-as.data.frame(ranef(R7mag)$site_no)
 REdf$site_no<-rownames(REdf)
@@ -29,8 +39,88 @@ summary(lm_RE)
 plot(fishSC_RE$Elev_m,fishSC_RE$RE)
 
 #try dummies for non-linearities
-dummy <- as.numeric(year == 1957)
+# abundances were highest in years without winter floods (greater than 50 ft3/s daily flow) and 
+# with high fall precipitation (at least 150 mm daily max)
 
+A.FishNNPredsS_CC$DummyWinterHF <- as.numeric(A.FishNNPredsS_CC$p95winter >50) #67 1s
+A.FishNNPredsS_CC$DummyPfall <- as.numeric(A.FishNNPredsS_CC$Pfall <150) #93 1s
+
+R7dumS<-lmer(log(EstYOYAbu)~(1|site_no)+DummyPfall+DummyWinterHF +Stdp95spring
+             +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+             +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+             ,data=A.FishNNPredsS_CC, REML=F); summary(R7dumS)
+
+anova(R7magS,R7dumS)
+#Try models with standardized variables instead of logged: 
+# load("output/A.FishNNPredsS.rdata") 
+# All_fishCC_S<-A.FishNNPredsS[complete.cases(A.FishNNPredsS),] #remove observations with ANY missing values
+
+R7mag<-lmer(log(EstYOYAbu)~(1|site_no)+log(p5fall+.05)+log(p95spring) +log(p95winter)
+            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
+            +log(maxP1fall)+log(maxP1spring)+log(maxP1winter)
+            ,data=A.FishNNPredsS_CC, REML=F); summary(R7mag)
+
+R7magS<-lmer(log(EstYOYAbu)~(1|site_no)+Stdp5fall+Stdp95winter +Stdp95spring
+            +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+            +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+            ,data=A.FishNNPredsS_CC, REML=F); summary(R7magS)
+
+anova(R7mag,R7magS) #anova comparison
+
+#Duration
+R7dur<-lmer(log(EstYOYAbu)~(1|site_no)+log(DurLFfall+.05)+log(DurHFwinter+.05)+log(DurHFspring+.05) 
+            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)#+log(MaxTfall)*log(DurLFfall+.05)
+            +log(maxP1fall)+log(maxP1winter)+log(maxP1spring)
+            ,data=A.FishNNPredsS_CC, REML=F)
+
+R7durS<-lmer(log(EstYOYAbu)~(1|site_no)+StdDurLFfall+StdDurHFwinter+StdDurHFspring+ 
+              +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+            +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+            ,data=A.FishNNPredsS_CC, REML=F); summary(R7durS)
+
+anova(R7dur,R7durS) #anova comparison
+
+#Compare Average flows
+R7avg<-lmer(log(EstYOYAbu)~(1|site_no)+log(AvgQfall)+log(AvgQwinter)+log(AvgQspring) 
+            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
+            +log(maxP1fall)+log(maxP1winter)+log(maxP1spring)
+            ,data=A.FishNNPredsS_CC, REML=F)
+
+R7avgS<-lmer(log(EstYOYAbu)~(1|site_no)+StdAvgQfall+StdAvgQwinter+StdAvgQspring+ 
+               +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+             +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+             ,data=A.FishNNPredsS_CC, REML=F)
+
+anova(R7avg,R7avgS) #anova comparison
+
+#And seasonal weather
+R7wea<-lmer(log(EstYOYAbu)~(1|site_no)+log(Pfall)+log(Pwinter)+log(Pspring) 
+            +log(MaxTfall)+log(MaxTspring)+log(MaxTwinter)
+            +log(maxP1fall)+log(maxP1winter)+log(maxP1spring)
+            ,data=A.FishNNPredsS_CC, REML=F)
+
+R7weaS<-lmer(log(EstYOYAbu)~(1|site_no)+StdPfall+StdPwinter+StdPspring+ 
+               +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+             #+StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+             ,data=A.FishNNPredsS_CC, REML=F)
+
+R7weaS2<-lmer(log(EstYOYAbu)~(1|site_no)+StdPfall+StdPwinter+StdPspring+ 
+               +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+             +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+             ,data=A.FishNNPredsS_CC, REML=F)
+
+anova(R7weaS,R7weaS2) #anova comparison
+
+R7avgmagS<-lmer(log(EstYOYAbu)~(1|site_no)+StdAvgQfall+Stdp95winter+Stdp95spring+ 
+               +StdMaxTfall+StdMaxTwinter+StdMaxTspring
+             +StdmaxP1fall+StdmaxP1winter+StdmaxP1spring
+             ,data=A.FishNNPredsS_CC, REML=F)
+
+##Standardized comparison
+anova(R7weaS,R7avgS,R7magS,R7durS,R7avgmagS) 
+anova(R7wea,R7dur)  #,R7magS,R7durS
+
+anova(R7durS,R7dur) 
 
 #OLDER FILES
 # load("output/UVAA.FishNNPreds.rdata") #with UVA sites used in NN

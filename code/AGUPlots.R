@@ -110,6 +110,15 @@ filled.contour(d3plot1,
 plot(All_fishCC$maxP3fall,All_fishCC$EstYOYAbu)
 summary(lm(EstYOYAbu~maxP1fall+maxP1winter+maxP1spring,data=All_fishCC))
 
+#with colored points instead of filled contours
+All_fishCC$YOYabunFac<-as.factor(as.numeric(cut_number(All_fishCC$EstYOYAbu, 6)))
+
+ggplot( All_fishCC,aes(x=maxP1fall, y=maxP1spring,col=EstYOYAbu))+ geom_point()+ scale_colour_gradient(trans = "log")
+ggplot( All_fishCC,aes(x=maxP1fall, y=p95winter,col=EstYOYAbu))+ geom_point()+ scale_colour_gradient(trans = "log")
+
+
+labs(x="Log(Empirical)", y="Log(Predicted)") #, title="Power Law Model"
+ +geom_abline(intercept = 0,slope=1)
 
 # Figure 4 - 4 subplots of coefficients from JAGS
 # - do ppcheck  to make sure my output is ok, part of JAGSUI
@@ -130,13 +139,13 @@ summary(lm(EstYOYAbu~maxP1fall+maxP1winter+maxP1spring,data=All_fishCC))
 outJUI_Dec8Mag<-outJUI_Dec8Mag2
 pdf("plots/MagmaxP_AGU.pdf",width=8, height=6) #
 #labels
-labels=paste(c("fall","winter","spring"))
+labels=paste(c("fall low flow","winter high flow","spring high flow","fall max precip","winter max precip","Spring max precip"))
 par(mar = c(4, 6, 4, 2))
 ## Create plot with no x axis and no x axis label
 boxplot(outJUI_Dec8$sims.list$g.0[,7,1],outJUI_Dec8$sims.list$g.0[,3,1],outJUI_Dec8$sims.list$g.0[,4,1],
         outJUI_Dec8$sims.list$g.0[,5,1],outJUI_Dec8$sims.list$g.0[,1,1],outJUI_Dec8$sims.list$g.0[,2,1],
         #moved 5th coefficient to 1st spot so that fall max precip is first in precip list; moved flow magnitude vars to be first in order
-        col = c("orange","grey","lightgreen","orange","grey","lightgreen"),  xaxt="n", xlab="",ylab="effect size",
+        col = c("orange","grey","lightgreen","orange","grey","lightgreen"),  xaxt="n", xlab="",ylab="effect size"
         ) #main="Flow magnitude and maximum daily precipitation"
 axis(1, at=1:8,labels = FALSE)
 # Plot x axis labels at default tick marks
@@ -147,6 +156,8 @@ abline(v=3.5,lty=3)
 dev.off()
 
 ##New
+
+save(outJUI_Dec11,file="output/outJUI_Dec11.rdata")
 
 pdf("plots/Dec12_AGU.pdf",width=8, height=6) #
 #labels
@@ -167,7 +178,6 @@ abline(v=3.5,lty=3)
 dev.off()
 # pdf("plots/MagmaxP_AGU.pdf") #
 # #labels
-# labels=paste(c("Winter high flow","Spring high flow","Fall max precip","Winter max precip","Spring max precip","Fall temp","Winter temp","Spring temp"))
 # par(mar = c(7, 4, 4, 2) + 0.1)
 # ## Create plot with no x axis and no x axis label
 # boxplot(outJUI_Dec8$sims.list$g.0[,3,1],outJUI_Dec8$sims.list$g.0[,4,1],outJUI_Dec8$sims.list$g.0[,5,1],outJUI_Dec8$sims.list$g.0[,1,1],outJUI_Dec8$sims.list$g.0[,2,1],
@@ -182,6 +192,12 @@ dev.off()
 # abline(0,0)
 # dev.off()
 
+save(outJUI_Dec21_ss,file="output/outJUI_Dec21_ss.rdata")
+load(file="output/outJUI_Dec21_ss.rdata")
+boxplot(outJUI_Dec21_ss$sims.list$b[,1,1],outJUI_Dec21_ss$sims.list$b[,2,1],outJUI_Dec21_ss$sims.list$b[,3,1],outJUI_Dec21_ss$sims.list$b[,4,1],
+        outJUI_Dec21_ss$sims.list$b[,5,1],outJUI_Dec21_ss$sims.list$b[,6,1],outJUI_Dec21_ss$sims.list$b[,7,1],outJUI_Dec21_ss$sims.list$b[,8,1],
+        #moved 5th coefficient to 1st spot so that fall max precip is first in precip list; moved flow magnitude vars to be first in order
+        col = c("yellow","orange","grey","lightgreen"),  xaxt="n", xlab="",ylab="effect size") 
 
 
 #compare to

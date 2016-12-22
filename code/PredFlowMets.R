@@ -217,7 +217,7 @@ load("output/A.Fish.rdata")
 All_fish2<-merge(A.Fish,A.Fishmerge2,by=c("site_no","Nyear"))
 save(All_fish2,file="output/All_fish2.rdata")
 
-##Now do more comparisons
+#### Now do more comparisons ####
 load("output/All_fish.rdata")
 load("output/A.FishNNPreds.rdata") #just USGS sites used in NN
 
