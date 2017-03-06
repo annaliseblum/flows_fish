@@ -16,7 +16,7 @@ source(file="code/Functions.R")
 #Import data or load raw data sets:
 #source(file="code/DataImport.R") #(previously SitesImport.R)
 
-#load:
+#if loading:
 load("data/rawDailyData.rdata") #flows for 47 USGS sites in HUC2 and GAGESII EasternMts
 load("output/rawUSGS_BC.rdata") #basin characteristics from GAGESII
 load("output/fishsiteDf.rdata") #fish site characteristics from Kanno et al (2016)
@@ -35,7 +35,9 @@ source(file="code/FlowMets.R")
 source(file="code/PredFlowMets.R")
 
 ## Combine data sets ###
-source(file="code/Combine.R")
+source(file="code/Std.R") #just weather variables with fish
+
+source(file="code/Combine.R") #old, with flows
 
 #Explore - make comparison plots #
 #source(file="code/Explore.R")

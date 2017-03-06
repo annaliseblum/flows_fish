@@ -96,15 +96,26 @@ save(countAr,file="output/countAr.rdata")
 
 #information on Julian day of sampling
 Stats_Rev2 <- read.csv("YK/W_FI_MICOFISH_Stats_Rev2.csv")
-JulianDay<-Stats_Rev2[c("SiteID","Year","Month","Day")]
+JulianDayraw<-Stats_Rev2[c("SiteID","Year","Month","Day")]
 
 ## add Julian date
-JulianDay$julian <- ifelse(JulianDay$Month == 6, 151+JulianDay$Day, 
-                         ifelse(JulianDay$Month == 7, 181+JulianDay$Day, 212+JulianDay$Day)) #ignore leap years
+JulianDayraw$julian <- ifelse(JulianDayraw$Month == 6, 151+JulianDayraw$Day, 
+                           ifelse(JulianDayraw$Month == 7, 181+JulianDayraw$Day, 212+JulianDayraw$Day)) #in leap years, dec 31 is removed so this will be off by a day
+JulianDayraw$summerday <- ifelse(JulianDayraw$Month == 6, JulianDayraw$Day, 
+                              ifelse(JulianDayraw$Month == 7, 30+JulianDayraw$Day, 31+JulianDayraw$Day))
+
+#for some reason, some of the data is triplicated
+
+JulianDay <- ddply(JulianDayraw, .(SiteID,Year), summarize,
+                          julian = mean(julian, na.rm = T),
+                     summerday = mean(summerday, na.rm = T)
+)
+
+
 JulianDay$Nyear<-JulianDay$Year-1981
 JulianDay$site_no<-substr(JulianDay$SiteID,3,9)
-JulianDay<-JulianDay[c("site_no","julian","Nyear")]
-
+JulianDay<-JulianDay[c("site_no","Nyear","summerday","julian")]
+JulianDay<-JulianDay[JulianDay$Nyear<30,]
 save(JulianDay,file="output/JulianDay.rdata")
 
 ####6 - Import DAYMET data ####

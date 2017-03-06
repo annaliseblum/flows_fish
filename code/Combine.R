@@ -75,13 +75,14 @@ save(S.Fish,file="output/S.Fish.rdata")
 
 ## Merge A.Fish and Flow predictions on annual level
 
+#merge in the Julian Day that the sample was taken
+# load("output/JulianDay.rdata")
+
 All_fish<-merge(A.Fish,A.Fishmerge,by=c("site_no","Nyear"))
+All_fish<-merge(All_fish,JulianDay,by=c("site_no","Nyear"))
+
 save(All_fish,file="output/All_fish.rdata")
 
-#merge in the Julian Day that the sample was taken - WHATS HAPPENING HERE??
-# load("output/JulianDay.rdata")
-# JulianDay<-JulianDay[JulianDay$Nyear<30,]
-# All_fish1<-merge(All_fish,JulianDay,by=c("site_no","Nyear"))
 
 
 #### OLD ####

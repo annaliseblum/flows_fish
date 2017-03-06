@@ -80,17 +80,20 @@ init <- function() list( mu=runif(nAges,0,5),
 # outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
 # save(outpaperFull_df,file="output/outpaperFull_df.rdata")
 
+#for new model with pp.check
+pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3","N",
+          "p.mean","p.b","b.day","eps","fit","fit.new")
 
 ##with JAAGUI - started at 11: am pm - ended 1 pm! with 3 cores; can get up to 16 cores on the server
 nc=20;ni=50000; nt=20; nb=10000
-pars <- c("mu","sigmaN2","sigma2.b","g.0",
-          "p.mean","p.b","b.day","b.site") 
+# pars <- c("mu","sigmaN2","sigma2.b","g.0",
+#           "p.mean","p.b","b.day","b.site") 
 
 library(jagsUI)
-outJUI <- jags(
+outJUI_Feb15pp <- jags(
   data=dat,
   inits=init,
-  model = paste("YK/shen yoy model 3.5.r", sep=""),
+  model = paste("code/My shen yoy model 3.5.r", sep=""), #code/My shen yoy model 3.5.r
   parameters.to.save = pars,
   n.chains=nc,
   n.iter = ni,
@@ -98,14 +101,20 @@ outJUI <- jags(
   n.burnin=nb,
   parallel=T)
 
-summary(outJUI)
+summary(outJUI_Feb15pp)
+save(outJUI_Feb15pp,file="output/outJUI_Feb15pp.rdata")
+
+pdf("output/ppcheckModel.pdf")
+pp.check(outJUI_Feb15pp, actual = 'fit', new = 'fit.new')
+dev.off()
+
 
 ## Gelman
 library(coda)
 gelman.diag(out1)
 
 ## detailed summary and for graphing
-pars2 <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
+pars2 <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3", 
            "p.mean","p.b","b.day","b.site","b","N","p") 
 out2 <- jags.samples(StageBurnin, pars2, n.iter=Niter, thin=Nthin) 
 

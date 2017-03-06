@@ -1,72 +1,22 @@
 #Standardize variables to feed into the JAGS models
 ###Impact of Extreme Streamflows on Brook Trout Young-of-Year Abundance
 ### Annalise G Blum
-##Created:Dec 7, 2016, last modified: Dec 7,2016
+##Created:Dec 7, 2016, last modified: Feb 23,2017
 ##Data NEEDED for this file:
+load("output/aDAYMET.rdata") #from WeatherPrep.R
+load("output/A.Fishmerge.rdata") #from PredFlowMets
 ##Data sets created in this file: 
-#######TO DO: line 55 merge standardize vals in so that I can do lme regresssion with them
-###Array  - make it line 126
-#to make my covariate flows look like these
-#load("~/flows_fish/YK/Site_by_year seasonal climate var standardized 115.rdata")
+#load("output/max7Precip.rdata") #has: max7prcpwinterStd, max7prcpspringStd, max7prcpfallStd
+#load("output/predExFlows.rdata") #has: save(p5fallStd, p95winterStd, p95springStd
 
-load("output/All_fish2.rdata") #Use this version where they are predicted from daily values
-
-#### 1 - Standardize variables ####
-
-standard<-function(x) { #but need to do this by site
-  stand.var<-(x-mean(x,na.rm = T))/sd(x,na.rm = T)
-  return(stand.var)
-}
-dim(All_fish2)
-names(All_fish2)
-
-#pull out site and Nyear along with the variables that will need to be standardized
-subAll_fish2<-All_fish2[,c(1:14,32:34, 48:(ncol(All_fish2)))]
-
-L_A.FishPreds<-split(subAll_fish2[,2:ncol(subAll_fish2)],subAll_fish2[1]) #make into list of sites - now just 106
-#L_A.FishPreds[[1]] 
-test<-L_A.FishPreds[[86]]  
-max(test$DurLFfall)
-#for all sites:
-#To avoid standardizing Nyear, pull it out: L_A.FishPreds[[1]][2:ncol(L_A.FishPreds[[1]])]
-# (summer and fall weather variables are all missing because of year 1 NA, but ok for now)
-#initalize with first site
-StdData<-as.data.frame(sapply(L_A.FishPreds[[1]][2:(ncol(L_A.FishPreds[[1]]))],standard)) #this exludes first column which is Nyear
-StdData<-as.data.frame(c(L_A.FishPreds[[1]][1],StdData)) #add year back in - same order? seems like it - hopefully
-StdData$site_no<-names(L_A.FishPreds[1])
-
-#loop through the other sites
-for (i in 2: length(L_A.FishPreds)){
-  iStdData<-as.data.frame(sapply(L_A.FishPreds[[i]][2:(ncol(L_A.FishPreds[[i]]))],standard)) #standardize all vars except Nyear
-  iStdData<-as.data.frame(c(L_A.FishPreds[[i]][1],iStdData)) #first column is Nyear
-  iStdData$site_no<-names(L_A.FishPreds[i])
-  # iDroughtFlood<-as.data.frame(L_A.FishPreds[i])[,23:26]
-  # names(iDroughtFlood)<-c("DroPredsummer","DroPredfall","FloodPredwinter","FloodPredspring")
-  # iFDStdData<-cbind(iStdData,iDroughtFlood)
-  StdData<-rbind(StdData,iStdData)
-}
-#summary(StdData) #why NA's   :377  for DurLFsummer and fall?? #zeros!! 13 sites have NAs
-StdDataPreds2 <-StdData #StdDataPreds
-
-save(StdDataPreds2,file="output/StdDataPreds2.rdata")
-
-#### 3 - to run in frequentist models ####
-#merge into main observation data frame:
-load("output/All_fish2.rdata"); head(All_fish2)
-
-#######TO DO:
-#need to add"Std" to begining of standardized variables (all execept first and last variables site and year)
-dim(StdDataPreds2)
-colnames(StdDataPreds2)[2:(ncol(StdDataPreds2)-1)] #site_no is last unfortunately
-colnames(StdDataPreds2)[2:(ncol(StdDataPreds2)-1)] <- paste("Std", colnames(StdDataPreds2)[2:(ncol(StdDataPreds2)-1)], sep = "")
-
-#merge
-A.FishNNPredsS<-merge(All_fish2,StdDataPreds2,by=c("site_no","Nyear"))
-#A.FishNNPredsS$site_no<-as.factor(A.FishNNPredsS$site_no) #not sure why i did this
-
-save(A.FishNNPredsS,file="output/A.FishNNPredsS.rdata")
-
-#### 4 - Make arrays for JAGS ####
+#Selected model
+R11<-lmer(log(EstNyoy)~(1+Stdp5fall+Stdp95winter|site_no)+
+            Stdp5fall+Stdp95winter+Stdp95spring+ #flows
+            StdMaxTfall+StdMaxTwinter+StdMaxTspring+ #temps
+            Stdmax7prcpfall+Stdmax7prcpwinter+Stdmax7prcpspring+ #max precip
+            Stdmax7prcpfall2+ Stdmax7prcpspring2+StdMaxTfall2+StdMaxTspring2+ #quadratic terms
+            Stdmax7prcpfall3+ Stdmax7prcpspring3+StdMaxTfall3+StdMaxTspring3 #cubic terms
+          ,data=Fish_WeaFlStd);#summary(R11)
 
 ##Example of Kanno's arrays
 # #matrix of 115 sites by 29 years
@@ -74,10 +24,124 @@ save(A.FishNNPredsS,file="output/A.FishNNPredsS.rdata")
 # rownames(winterPrcpAryStd)
 # colnames(winterPrcpAryStd)
 
-load("output/StdDataPreds2.rdata") #StdDataPreds.rdata
-StdDataPreds<-StdDataPreds2
-StdDataPredsNY1<-StdDataPreds[StdDataPreds$Nyear>1,]
+#### Make arrays for JAGS ####
+#use aDAYMET for precip
+aDAYMET<-aDAYMET[aDAYMET$Nyear!=1,]
 
+Flows<- A.Fishmerge[c("site_no","Nyear","p5fall","p95winter","p95spring")]
+
+PrecipExt<-aDAYMET[c("site_no","Nyear","max7prcpfall","max7prcpwinter","max7prcpspring")]
+
+PrecipExt<-merge(PrecipExt,Flows,by=c("site_no","Nyear"))
+
+standard<-function(x) { #but need to do this by site
+  stand.var<-(x-mean(x,na.rm = T))/sd(x,na.rm = T)
+  return(stand.var)
+}
+# dim(PrecipExt)
+# names(PrecipExt)
+
+L_PrecipExt<-split(PrecipExt[,2:ncol(PrecipExt)],PrecipExt[1]) #make into list of sites - now just 106
+#L_PrecipExt[[1]] 
+
+# EXample of first site
+#for all sites:
+#To avoid standardizing Nyear, pull it out: L_A.FishPreds[[1]][2:ncol(L_A.FishPreds[[1]])]
+# (summer and fall weather variables are all missing because of year 1 NA, but ok for now)
+#initalize with first site
+StdData<-as.data.frame(sapply(L_PrecipExt[[1]][2:(ncol(L_PrecipExt[[1]]))],standard)) #this exludes first column which is Nyear
+StdData<-as.data.frame(c(L_PrecipExt[[1]][1],StdData)) #add year back in - same order? seems like it - hopefully
+StdData$site_no<-names(L_PrecipExt[1])
+
+#loop through the other sites
+for (i in 2: length(L_PrecipExt)){
+  iStdData<-as.data.frame(sapply(L_PrecipExt[[i]][2:(ncol(L_PrecipExt[[i]]))],standard)) #standardize all vars except Nyear
+  iStdData<-as.data.frame(c(L_PrecipExt[[i]][1],iStdData)) #first column is Nyear
+  iStdData$site_no<-names(L_PrecipExt[i])
+  StdData<-rbind(StdData,iStdData)
+}
+#summary(StdData) 
+
+#cast new precip metrics (temp is already done)
+#max 7 day precip
+max7prcpfallStd <- dcast(StdData, site_no ~ Nyear,value.var = "max7prcpfall") 
+rownames(max7prcpfallStd)
+rownames(max7prcpfallStd)<-paste("Site",rownames(max7prcpfallStd),sep="")
+max7prcpfallStd$site_no<-NULL;colnames(max7prcpfallStd)
+colnames(max7prcpfallStd)<-paste("Year",colnames(max7prcpfallStd),sep="")
+max7prcpfallStd<-as.matrix(max7prcpfallStd); str(max7prcpfallStd)
+
+max7prcpwinterStd <- dcast(StdData, site_no ~ Nyear,value.var = "max7prcpwinter") 
+rownames(max7prcpwinterStd)
+rownames(max7prcpwinterStd)<-paste("Site",rownames(max7prcpwinterStd),sep="")
+max7prcpwinterStd$site_no<-NULL;colnames(max7prcpwinterStd)
+colnames(max7prcpwinterStd)<-paste("Year",colnames(max7prcpwinterStd),sep="")
+max7prcpwinterStd<-as.matrix(max7prcpwinterStd); str(max7prcpwinterStd)
+
+max7prcpspringStd <- dcast(StdData, site_no ~ Nyear,value.var = "max7prcpspring") 
+rownames(max7prcpspringStd)
+rownames(max7prcpspringStd)<-paste("Site",rownames(max7prcpspringStd),sep="")
+max7prcpspringStd$site_no<-NULL;colnames(max7prcpspringStd)
+colnames(max7prcpspringStd)<-paste("Year",colnames(max7prcpspringStd),sep="")
+max7prcpspringStd<-as.matrix(max7prcpspringStd); str(max7prcpspringStd)
+
+save(max7prcpwinterStd, max7prcpspringStd, max7prcpfallStd, file="output/max7Precip.rdata")
+
+##Flows: low fall, high winter and spring
+#fall
+p5fallStd <- dcast(StdData, site_no ~ Nyear,value.var = "p5fall")
+rownames(p5fallStd)<-paste("Site",rownames(p5fallStd),sep="")
+p5fallStd$site_no<-NULL
+colnames(p5fallStd)<-paste("Year",colnames(p5fallStd),sep="")
+p5fallStd<-as.matrix(p5fallStd)
+str(p5fallStd)
+
+#winter
+p95winterStd <- dcast(StdData, site_no ~ Nyear,value.var = "p95winter")
+rownames(p95winterStd)<-paste("Site",rownames(p95winterStd),sep="")
+p95winterStd$site_no<-NULL
+colnames(p95winterStd)<-paste("Year",colnames(p95winterStd),sep="")
+p95winterStd<-as.matrix(p95winterStd)
+str(p95winterStd)
+
+#spring
+p95springStd <- dcast(StdData, site_no ~ Nyear,value.var = "p95spring")
+rownames(p95springStd)<-paste("Site",rownames(p95springStd),sep="")
+p95springStd$site_no<-NULL
+colnames(p95springStd)<-paste("Year",colnames(p95springStd),sep="")
+p95springStd<-as.matrix(p95springStd)
+str(p95springStd)
+
+save(p5fallStd, p95winterStd, p95springStd, file="output/predExFlows.rdata")
+
+
+
+#### OLD ####
+#consecutive dry days
+conU1fallStd <- dcast(StdDataPreds, site_no ~ Nyear,value.var = "conU1fall") 
+rownames(conU1fallStd)
+rownames(conU1fallStd)<-paste("Site",rownames(conU1fallStd),sep="")
+conU1fallStd$site_no<-NULL;colnames(conU1fallStd)
+colnames(conU1fallStd)<-paste("Year",colnames(conU1fallStd),sep="")
+conU1fallStd<-as.matrix(conU1fallStd); str(conU1fallStd)
+conU1fallStd[is.na(conU1fallStd)]<-0 #replace NAs in year 1 with 0s
+
+conU1winterStd <- dcast(StdDataPreds, site_no ~ Nyear,value.var = "conU1winter") 
+rownames(conU1winterStd)
+rownames(conU1winterStd)<-paste("Site",rownames(conU1winterStd),sep="")
+conU1winterStd$site_no<-NULL;colnames(conU1winterStd)
+colnames(conU1winterStd)<-paste("Year",colnames(conU1winterStd),sep="")
+conU1winterStd<-as.matrix(conU1winterStd); str(conU1winterStd)
+
+conU1springStd <- dcast(StdDataPreds, site_no ~ Nyear,value.var = "conU1spring") 
+rownames(conU1springStd)
+rownames(conU1springStd)<-paste("Site",rownames(conU1springStd),sep="")
+conU1springStd$site_no<-NULL;colnames(conU1springStd)
+colnames(conU1springStd)<-paste("Year",colnames(conU1springStd),sep="")
+conU1springStd<-as.matrix(conU1springStd); str(conU1springStd)
+
+
+####OLDISH####
 #need to cast by year - Average flows AvgQsummerStd AvgQfallStd AvgQwinterStd AvgQspringStd
 #summer
 AvgQsummerStd <- dcast(StdDataPreds, site_no ~ Nyear,value.var = "AvgQsummer") 

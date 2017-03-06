@@ -1,7 +1,7 @@
 ##AB call she yoy model 3.5
 ##June 6, 2016; Modified Oct 27,2016
 #rm(list = setdiff(ls(), lsf.str())) #clears all variables except functions
-##SLOPE STANDARDIZATION DOESN'T HAVE SD=1; FIX THIS
+##SLOPE STANDARDIZATION DOESN'T HAVE SD=1; FIX THIS - is it even used??
 
 getwd()
 library(reshape2);library(rjags);library(plyr);library(ggplot2);library(knitr);library(arm);library(boot)
@@ -34,37 +34,16 @@ prcpTot.std.ar[is.na(prcpTot.std.ar)] <- 0
 # data structure
 nSites=115; nYears=29; nAges=1; nPasses=3 ## Just run for nAge = YOY
 
-nCovs=8
+nCovs=9
 
 # bundle data
 dat <- list(nSites=nSites, nYears=nYears, nCovs=nCovs, nAges=nAges,
             y=countAr,  # three-pass of both adults & YOY
-            summer.temp=summerTempAryStd, fall.temp=fallTempAryStd, #summerTempAryStd
-            winter.temp=winterTempAryStd, spring.temp=springTempAryStd, #MagLFfallStd instead of winter temp
-            SummerFlow=summerPrcpAryStd, FallFlow=fallPrcpAryStd,
-            WinterFlow=winterPrcpAryStd, SpringFlow=springPrcpAryStd,
+            B1=fallTempAryStd, B2=winterTempAryStd, B3=springTempAryStd,
+            B4=max7prcpfallStd,B5=max7prcpwinterStd, B6=max7prcpspringStd,
+            B7=conU1fallStd, B8=conU1winterStd, B9=conU1springStd,
             elev=elev.std, lat=lat.std,
             julian=julian.std.ar, prcpTot=prcpTot.std.ar, area=area.std)
-
-# #New variables
-# summer.temp=MaxP1fallStd, fall.temp=fallTempAryStd,
-# winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
-# SummerFlow=MaxP1winStd, FallFlow=MaxP1springStd,
-# WinterFlow=AvgQwinterStd, SpringFlow=AvgQspringStd,
-# elev=elev.std, lat=lat.std,
-# julian=julian.std.ar, prcpTot=prcpTot.std.ar, area=area.std)
-
-# SummerFlow=AvgQsummerStd, FallFlow=AvgQfallStd,
-# WinterFlow=AvgQwinterStd, SpringFlow=AvgQspringStd,
-
-# SummerFlow=summerPrcpAryStd, FallFlow=fallPrcpAryStd,
-# WinterFlow=winterPrcpAryStd, SpringFlow=springPrcpAryStd,
-
-# SummerFlow=DurLFsumStd, FallFlow=DurLFfallStd,
-# WinterFlow=DurHFwinStd, SpringFlow=DurHFsprStd, #try replacing  precip with avg flows (outJUI3), outJUI4 is duration
-# 
-# SummerFlow=MagLFsumStd, FallFlow=MagLFfallStd,
-# WinterFlow=MagHFwinStd, SpringFlow=MagHFspringStd, 
 
 ## set initial values
 init <- function() list( mu=array(runif(nSites*nAges,0,5), c(nSites,nAges)), #runif(nAges,0,5),
@@ -73,18 +52,20 @@ init <- function() list( mu=array(runif(nSites*nAges,0,5), c(nSites,nAges)), #ru
                          sigma.b=array(runif(nCovs*nAges,0,3), c(nCovs,nAges)),
                          p.mean=rep(0.5,nAges), p.b=array(rnorm(3*nAges,0,0.5), c(3,nAges)), #p.mean=rep(0.5,nAges) from 2
                          N=array(500, dim=c(nSites, nYears, nAges)),
-                         b.day=runif(nAges,-2,2),
-                         b.site=array(rnorm(3*nAges,0,0.5), c(3,nAges)))
+                         a.0=array(rnorm(nAges,0), c(nAges)), #remove these for direct pred of RE intercept
+                         a.1=array(rnorm(nAges,0), c(nAges)),
+                         a.2=array(rnorm(nAges,0), c(nAges)),
+                         a.3=array(rnorm(nAges,0), c(nAges)),
+                         b.day=runif(nAges,-2,2))
 
-##with JAAGUI - started at 11: am pm - ended 1 pm! with 3 cores
-#started at 2:40pm; done at 4:10 pm
+##with JAAGUI - started at 12:04
 nc=3;ni=50000; nt=20; nb=10000
 pars <- c("mu","sigmaN2","sigma2.b","b",
-          "p.mean","p.b","b.day","b.site") #re-run with gs ,"g.0","g.1","g.2","g.3"
+          "p.mean","p.b","b.day","a.0","a.1","a.2","a.3") #re-run with gs ,"g.0","g.1","g.2","g.3"
 # pars <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
-#           "p.mean","p.b","b.day","b.site","eps") 
+#           "p.mean","p.b","b.day","eps") 
 library(jagsUI)
-outJUI_Dec21_ss <- jags(
+outJUI_Dec23_2<- jags(
   data=dat,
   inits=init,
   model = paste("code/my yoy model 3.r", sep=""),
@@ -95,20 +76,19 @@ outJUI_Dec21_ss <- jags(
   n.burnin=nb,
   parallel=T)
 
-outJUI_Dec21 # one intercept
+outJUI_Dec21_ss$sims.list$b.day #to look at a particular variable
 
-summary(outJUI_Dec8)
-save(outJUI_Dec8,file="output/outJUI_Dec8.rdata") #with max P1
-
-
-save(outJUI2,file="output/outJUI2_avgW.rdata") #Kanno weather only
-save(outJUI3,file="output/outJUI3_avgS.rdata") #Seasonal averages
-save(outJUI4,file="output/outJUI4_dur.rdata") #Duration
-save(outJUI5,file="output/outJUI4_mag.rdata") #Magnitude
-
-save(outJUI3_uva,file="output/outJUI3_uva_avgS.rdata") #Seasonal averages
+save(outJUI_Dec23_2,file="output/outJUI_Dec23_2.rdata") #s-s random intercepts
+save(outJUI_Dec21_ss,file="output/outJUI_Dec21.rdata")# one intercept
 
 
+#### OLD ####
+# save(outJUI_Dec8,file="output/outJUI_Dec8.rdata") #with max P1
+# save(outJUI2,file="output/outJUI2_avgW.rdata") #Kanno weather only
+# save(outJUI3,file="output/outJUI3_avgS.rdata") #Seasonal averages
+# save(outJUI4,file="output/outJUI4_dur.rdata") #Duration
+# save(outJUI5,file="output/outJUI4_mag.rdata") #Magnitude
+# save(outJUI3_uva,file="output/outJUI3_uva_avgS.rdata") #Seasonal averages
 
 #can check out commands whiskerplot and traceplot
 ## Gelman
@@ -117,7 +97,7 @@ gelman.diag(out1)
 
 ## detailed summary and for graphing
 pars2 <- c("mu","sigmaN2","sigma2.b","g.0","g.1","g.2","g.3",
-           "p.mean","p.b","b.day","b.site","b","N","p") 
+           "p.mean","p.b","b.day","b","N","p") 
 out2 <- jags.samples(StageBurnin, pars2, n.iter=Niter, thin=Nthin) 
 
 #pull out mean of bs
@@ -166,5 +146,26 @@ y.est[,,,3] <- N.est*(1-p.est)*(1-p.est)*p.est
 # 
 # outpaperFull_df<-as.data.frame(as.matrix(outpaperFull))
 # save(outpaperFull_df,file="output/outpaperFull_df.rdata")
+
+
+# #New variables
+# summer.temp=MaxP1fallStd, fall.temp=fallTempAryStd,
+# winter.temp=winterTempAryStd, spring.temp=springTempAryStd,
+# SummerFlow=MaxP1winStd, FallFlow=MaxP1springStd,
+# WinterFlow=AvgQwinterStd, SpringFlow=AvgQspringStd,
+# elev=elev.std, lat=lat.std,
+# julian=julian.std.ar, prcpTot=prcpTot.std.ar, area=area.std)
+
+# SummerFlow=AvgQsummerStd, FallFlow=AvgQfallStd,
+# WinterFlow=AvgQwinterStd, SpringFlow=AvgQspringStd,
+
+# SummerFlow=summerPrcpAryStd, FallFlow=fallPrcpAryStd,
+# WinterFlow=winterPrcpAryStd, SpringFlow=springPrcpAryStd,
+
+# SummerFlow=DurLFsumStd, FallFlow=DurLFfallStd,
+# WinterFlow=DurHFwinStd, SpringFlow=DurHFsprStd, #try replacing  precip with avg flows (outJUI3), outJUI4 is duration
+# 
+# SummerFlow=MagLFsumStd, FallFlow=MagLFfallStd,
+# WinterFlow=MagHFwinStd, SpringFlow=MagHFspringStd, 
 
 

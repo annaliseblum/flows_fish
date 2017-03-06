@@ -44,7 +44,6 @@ All_mod5<- lmer(log(EstYOYAbu)~(1|site_no)+log(p95summer)+log(p5fall)+log(p95win
 #only have nrow(AbuPFlows) = 411
 #Abu_predsGLM<-rep(NA, length=nrow(AbuPFlows))
 
-
 #how many sites to drop?
 n.drop<-round(nrow(AbuPFlows)*.1)
 

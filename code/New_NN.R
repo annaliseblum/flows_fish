@@ -14,6 +14,8 @@
 #### 4 - NN for fish sites from UVA and USGS sites
 #### 5 - find NN for UVA (1993-2010) for fish sites
 
+library(sp);library(rgeos)
+
 #### 1 - Load data sets ####
 load("output/UVA_BC.rdata") #UVA gages Basin Chars
 load("output/USGS_BC.rdata")#USGS gages Basin Chars

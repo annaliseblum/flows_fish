@@ -3,72 +3,96 @@ model{
   ## varying-slope model
   for(i in 1:nSites){
     for(t in 1:nYears){
-        N[i,t] ~ dpois(min(lamb[i,t],1000))
-        log(lamb[i,t]) <- mu + eps[i,t] +
-                             b[1,i]*summer.prcp[i,t] + b[2,i]*fall.prcp[i,t] + 
-                             b[3,i]*winter.prcp[i,t] + b[4,i]*spring.prcp[i,t] +
-                             b[5,i]*summer.temp[i,t] + b[6,i]*fall.temp[i,t] +
-                             b[7,i]*winter.temp[i,t] + b[8,i]*spring.temp[i,t] +
-                             b.day*julian[i,t]  + # to respond to Grossman's comment
-                             b.site[1]*elev[i] + b.site[2]*lat[i] + b.site[3]*area[i]
+      for(j in 1:nAges){
+        N[i,t,j] ~ dpois(min(lamb[i,t,j],1000))
+        log(lamb[i,t,j]) <-  #alpha[i,j] +
+          mu[j] + eps[i,t,j] +
+          b[1,i,j]*summer.prcp[i,t] + b[2,i,j]*fall.prcp[i,t] + 
+          b[3,i,j]*winter.prcp[i,t] + b[4,i,j]*spring.prcp[i,t] +
+          b[5,i,j]*summer.temp[i,t] + b[6,i,j]*fall.temp[i,t] +
+          b[7,i,j]*winter.temp[i,t] + b[8,i,j]*spring.temp[i,t] +
+          b.day[j]*julian[i,t]  + # to respond to Grossman's comment
+          b.site[1,j]*elev[i] + b.site[2,j]*lat[i] + b.site[3,j]*area[i]
+        
+        #for pp.check
+        res[i,t,j] <- N[i,t,j]-log(min(lamb[i,t,j],1000))
+        N.new[i,t,j] ~ dpois(min(lamb[i,t,j],1000)) #should I be doing this with y not N???
+        res.new[i,t,j] <- N.new[i,t,j] -log(min(lamb[i,t,j],1000)) #didn't do log here originally, I think a problem
       }
+    }
   }
   
   ## priors
   ### intercept
-  mu ~ dnorm(0, 0.001)T(0,5) #T means truncate, here between 0 and 5
+  for(j in 1:nAges){
+    mu[j] ~ dnorm(0, 0.001)T(0,5)
+  }
   ### site*year random effect
   for(i in 1:nSites){
     for(t in 1:nYears){
-        eps[i,t] ~ dnorm(0, tauN)
+      for(j in 1:nAges){
+        eps[i,t,j] ~ dnorm(0, tauN[j])
+      }
     }
   }
   
-    tauN <- pow(sigmaN, -2)
-    sigmaN~ dunif(0, 3)
-    sigmaN2 <- pow(sigmaN, 2)
+  for(j in 1:nAges){ #this is to get tau for the error for the site*year random effect (or model error?)
+    tauN[j] <- pow(sigmaN[j], -2)
+    sigmaN[j] ~ dunif(0, 3)
+    sigmaN2[j] <- pow(sigmaN[j], 2)
+  }
   
   ### slope
   for(h in 1:nCovs){
+    for(j in 1:nAges){
       for(i in 1:nSites){
-        b[h,i] ~ dnorm(mu.b[h,i], tau.b[h])
-        mu.b[h,i] <- g.0[h] + g.1[h]*elev[i] + g.2[h]*lat[i] + g.3[h]*area[i]
+        b[h,i,j] ~ dnorm(mu.b[h,i,j], tau.b[h,j])
+        mu.b[h,i,j] <- g.0[h,j] + g.1[h,j]*elev[i] + g.2[h,j]*lat[i] + g.3[h,j]*area[i]
       }  
-    g.0[h] ~ dnorm(0, 0.01)
-    g.1[h] ~ dnorm(0, 0.01)
-    g.2[h] ~ dnorm(0, 0.01)
-    g.3[h] ~ dnorm(0, 0.01)
-
-    tau.b[h] <- pow(sigma.b[h], -2)
-    sigma.b[h] ~ dunif(0, 3)
-    sigma2.b[h] <- pow(sigma.b[h], 2)
+      g.0[h,j] ~ dnorm(0, 0.01)
+      g.1[h,j] ~ dnorm(0, 0.01)
+      g.2[h,j] ~ dnorm(0, 0.01)
+      g.3[h,j] ~ dnorm(0, 0.01)
+      
+      tau.b[h,j] <- pow(sigma.b[h,j], -2)
+      sigma.b[h,j] ~ dunif(0, 3)
+      sigma2.b[h,j] <- pow(sigma.b[h,j], 2)
+    }
   }
   
   ### sampling day effect on abundance (Grossman comment) & spatial covariates 
-    b.day~ dnorm(0, 0.01)
-    b.site[1] ~ dnorm(0, 0.01)
-    b.site[2] ~ dnorm(0, 0.01)
-    b.site[3] ~ dnorm(0, 0.01)
+  for(j in 1:nAges){
+    b.day[j] ~ dnorm(0, 0.01)
+    b.site[1,j] ~ dnorm(0, 0.01)
+    b.site[2,j] ~ dnorm(0, 0.01)
+    b.site[3,j] ~ dnorm(0, 0.01)
+  }
   
   #### Detection
   for(i in 1:nSites) {
     for(t in 1:nYears){
-        y[i,t,1] ~ dbin(p[i,t], N[i,t])
-        y[i,t,2] ~ dbin(p[i,t]*(1-p[i,t]), N[i,t])
-        y[i,t,3] ~ dbin(p[i,t]*(1-p[i,t])*(1-p[i,t]), N[i,t])  
-      
-        p[i,t] <- 1/(1 + exp(-lp.lim[i,t]))
-        lp.lim[i,t] <- min(999, max(-999, lp[i,t]))
-        lp[i,t] <- p.mu + p.b[1]*julian[i,t] + p.b[2]*prcpTot[i,t] + p.b[3]*area[i]
+      for(j in 1:nAges){
+        y[i,t,j,1] ~ dbin(p[i,t,j], N[i,t,j])
+        y[i,t,j,2] ~ dbin(p[i,t,j]*(1-p[i,t,j]), N[i,t,j])
+        y[i,t,j,3] ~ dbin(p[i,t,j]*(1-p[i,t,j])*(1-p[i,t,j]), N[i,t,j])  
+        
+        p[i,t,j] <- 1/(1 + exp(-lp.lim[i,t,j]))
+        lp.lim[i,t,j] <- min(999, max(-999, lp[i,t,j]))
+        lp[i,t,j] <- p.mu[j] + p.b[1,j]*julian[i,t] + p.b[2,j]*prcpTot[i,t] + p.b[3,j]*area[i]
+      }
     }  
   }
   
   #### Detection prior
-    p.mean~ dunif(0.1,0.9)
-    p.mu <- log(p.mean/(1-p.mean))
-     
-    p.b[1] ~ dnorm(0,0.37)T(-3,3)
-    p.b[2] ~ dnorm(0,0.37)T(-3,3)
-    p.b[3] ~ dnorm(0,0.37)T(-3,3)
+  for(j in 1:nAges){
+    p.mean[j] ~ dunif(0.1,0.9)
+    p.mu[j] <- log(p.mean[j]/(1-p.mean[j]))
     
-} 
+    p.b[1,j] ~ dnorm(0,0.37)T(-3,3)
+    p.b[2,j] ~ dnorm(0,0.37)T(-3,3)
+    p.b[3,j] ~ dnorm(0,0.37)T(-3,3)
+  }
+  #Derived parameters - for pp.check
+  fit <- sum(res)
+  fit.new <- sum(res.new)  
+}

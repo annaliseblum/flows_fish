@@ -10,6 +10,8 @@ library(DataCombine)
 
 load("output/DAYMET.rdata")
 length(unique(DAYMET$site_no)) #173=53 USGS + 5 UVA + 115 Fish
+DAYMET$site_no<-as.character(DAYMET$site_no)
+load("output/JulianDay.rdata")
 
 #but only need for fish sites now
 DAYMET$type<-ifelse(nchar(DAYMET$site_no)>7,"gage","fish") #both USGS and UVA have length 8, longest fish is 7
@@ -55,8 +57,10 @@ sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxF
 sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxF2", slideBy = 2)
 sortDAYMETS<-slide(sortDAYMETS, Var= "tmax", GroupVar= "site_no", NewVar= "tmaxF3", slideBy = 3)
 
-##add rolling average 7-day precip value
+#get mean of weekly maxtemp
+sortDAYMETS$avg7maxT<-rowMeans(subset(sortDAYMETS, select = c("tmax","tmaxL1","tmaxL2","tmaxL3","tmaxF1","tmaxF2","tmaxF3")), na.rm = TRUE)
 
+##add rolling average 7-day precip value
 sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL1", slideBy = -1)
 sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL2", slideBy = -2)
 sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL3", slideBy = -3)
@@ -64,6 +68,9 @@ sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL
 sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF1", slideBy = 1)
 sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF2", slideBy = 2)
 sortDAYMETS<-slide(sortDAYMETS, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF3", slideBy = 3)
+
+#rowSums
+sortDAYMETS$sum7prcp<-rowSums(subset(sortDAYMETS, select = c("prcp","prcpL1","prcpL2","prcpL3","prcpF1","prcpF2","prcpF3")), na.rm = TRUE)
 
 slidDAYMETS<-sortDAYMETS
 
@@ -99,8 +106,22 @@ slidDAYMETS$cumU1prcp<-cumul_zeros(as.numeric((slidDAYMETS$prcp>1)))
 # prcp.05<-aggregate(DAYMETnon0prp$prcp,by=list(DAYMETnon0prp$site_no),FUN=quantile,probs=0.05,type=6)
 # names(prcp.05)<-c("site_no","nonzero5pPrec") #but most are 1 mm
 
+##merge in the julian day of sampling to get cumulative summer temp up to that day
+slidDAYMETS1<-merge(JulianDay,slidDAYMETS,by=c("site_no","Nyear"))
+slidDAYMETS1$day<-as.integer(format(slidDAYMETS1$Date, "%d")) #extract day variable 
+subslidDAYMETS1<-slidDAYMETS1[slidDAYMETS1$day<=slidDAYMETS1$summerday,]
+
+#collapse to get mean temps up to sample day
+sumCumtemps <- ddply(subslidDAYMETS1, .(site_no, Nyear), summarize, 
+                 avgtmax = mean(tmax, na.rm = T),
+                 avgtmin = mean(tmin, na.rm = T),
+                 avgtavg = mean(tavg, na.rm = T)
+)
+names(sumCumtemps)<-c("site_no","Nyear","CumSumavgtmax","CumSumavgtmin","CumSumavgtavg")
+save(sumCumtemps,file="output/sumCumtemps.rdata")
+
 #collapse to seasonal level
-slidDAYMETS$tally<-1
+slidDAYMETS$tally<- 1
 SDAYMET <- ddply(slidDAYMETS, .(site_no, Nyear,season), summarize, 
                 daysperseason=sum(tally),
                 totprecip = sum(prcp, na.rm = T),
@@ -111,6 +132,8 @@ SDAYMET <- ddply(slidDAYMETS, .(site_no, Nyear,season), summarize,
                 maxP1day = max(prcp, na.rm = T),
                 maxcons0p = max(cum0prcp, na.rm = T), #longest consecutive days 0 precip - change to under 1?
                 maxconsU1p = max(cumU1prcp, na.rm = T), #longest consecutive days 1 mm or less precip
+                maxavg7maxT = max(avg7maxT, na.rm = T), #highest weekly average of daily maximum temperature
+                max7prcp = max(sum7prcp, na.rm = T), #highest weekly precipitation sum
                 year = max(year, na.rm = T) #to check - different years within seasons so this is chosing the year that goes with dec
 )
 
@@ -118,109 +141,68 @@ SDAYMET <- ddply(slidDAYMETS, .(site_no, Nyear,season), summarize,
 
 save(SDAYMET,file="output/SDAYMET.rdata")
 
-#### 2- Add monthly Precip, max daily precip and max 3 day precip ####
-MDAYMET <- ddply(DAYMET, .(site_no, Nyear, month), summarize, 
-                 dayspermonth=sum(tally),
-                 totprecip = sum(prcp, na.rm = T))
-head(MDAYMET)
-
-##aggregate back to seasonal level, preserving monthly precips
-w_MDAYMET <- dcast(MDAYMET, site_no + Nyear ~ month ,value.var = "totprecip") #need to get wide format
-names(w_MDAYMET) #check this
-names(w_MDAYMET)<-c("site_no","Nyear","Pjan", "Pfeb", "Pmar", "Papril", "Pmay", "Pjune", "Pjuly", "Paug", "Psept",
-                    "Poct", "Pnov", "Pdec")
-#reorder in fish year order
-w_MDAYMET<-w_MDAYMET[c("site_no","Nyear","Pjune", "Pjuly", "Paug", "Psept",
-                       "Poct", "Pnov", "Pdec","Pjan", "Pfeb", "Pmar", "Papril", "Pmay")]
-
-#find 3 day total Precip
-#sort to make sure it's in order
-sortDAYMET<-DAYMET[order(DAYMET$site_no,as.Date(DAYMET$Date, format="%Y-%m-%d ")),] #make sure order is correct
-#sDAYMET[1:100,]; tail(sDAYMET) #spot check
-
-#slide data forward and back 1 day to get 3 day totals around each day
-sortDAYMETS1<-slide(sortDAYMET, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL1", slideBy = -1)
-sortDAYMETS2<-slide(sortDAYMETS1, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF1", slideBy = 1)
-
-#sum 3 days
-sortDAYMETS2$P3day<-rowSums(subset(sortDAYMETS2, select = c("prcp","prcpL1","prcpF1")), na.rm = TRUE)
-
-#aggregate down to seasonal level, selecting max sum3day precip
-sP3day <- aggregate(sortDAYMETS2$P3day,by=list(sortDAYMETS2$site_no, sortDAYMETS2$Nyear, sortDAYMETS2$Nseason),FUN=max)
-names(sP3day)<-c("site_no","Nyear","Nseason","maxP3day")
-
-##max
-sP1day <- aggregate(DAYMET$prcp,by=list(DAYMET$site_no, DAYMET$Nyear, DAYMET$Nseason),FUN=max)
-names(sP1day)<-c("site_no","Nyear","Nseason","maxP1day")
-
-### merge these datasets together to have a seasonal data set with monthly precip sums, 3 day max precip
-sP13day<-merge(sP3day, sP1day,by=c("site_no","Nyear","Nseason"))
-#sum(sP13day$maxP1day> sP13day$maxP3day) #good, no 1 day maxes are higher than 3 day which wouldn't make sense
-
-sPrec<-merge(sP13day,w_MDAYMET,by=c("site_no","Nyear"))
-
-SDAYMET<-merge(SDAYMET,sPrec,by=c("site_no","Nyear","Nseason"))
-
-#add 0.01 to Precip vars with zeros: Pmar, Psept, Poct
-#summary(SDAYMET)
-SDAYMET$Pmar[SDAYMET$Pmar==0]<- .01
-SDAYMET$Psept[SDAYMET$Psept==0]<- .01
-SDAYMET$Poct[SDAYMET$Poct==0]<- .01
-
-sum(SDAYMET$avgtmax<0,na.rm=T) #11
-sum(SDAYMET$avgtmaxL1<0,na.rm=T) #11
-sum(SDAYMET$avgtmaxL2<0,na.rm=T) #8
-
-SDAYMET$avgtmax.T<- SDAYMET$avgtmax+3
-SDAYMET$avgtmaxL1.T<- SDAYMET$avgtmaxL1+3
-SDAYMET$avgtmaxL2.T<- SDAYMET$avgtmaxL2+3
-
-save(SDAYMET,file="output/SDAYMET.rdata")
-
 #### 3 - Collapse to annual level for both flow and fish predictions - need to be using "fish" year #### 
 #load("output/SDAYMET.rdata")
-fSDAYMETM <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "totprecip") #need to get wide format
-names(fSDAYMETM)
-names(fSDAYMETM)<-c("site_no","Nyear","Psummer","Pfall","Pwinter","Pspring")
+totprecip_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "totprecip") #need to get wide format
+names(totprecip_w)
+names(totprecip_w)<-c("site_no","Nyear","Psummer","Pfall","Pwinter","Pspring")
 
-fSDAYMETM2 <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "avgtmax") #need to get wide format
-names(fSDAYMETM2)<-c("site_no","Nyear", "MaxTsummer","MaxTfall", "MaxTwinter","MaxTspring")
+avgtmax_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "avgtmax")
+names(avgtmax_w)<-c("site_no","Nyear", "MaxTsummer","MaxTfall", "MaxTwinter","MaxTspring")
 
-fSDAYMETM3 <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "avgtmin") #need to get wide format
-names(fSDAYMETM3)<-c("site_no","Nyear","MinTsummer", "MinTfall", "MinTwinter", "MinTspring")
+avgtmin_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "avgtmin")
+names(avgtmin_w)<-c("site_no","Nyear","MinTsummer", "MinTfall", "MinTwinter", "MinTspring")
 
-sP3day_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "maxP3day") #need to get wide format
-names(sP3day_w)<-c("site_no","Nyear","maxP3summer","maxP3fall","maxP3winter","maxP3spring")
+avgtavg_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "avgtavg")
+names(avgtavg_w)<-c("site_no","Nyear","avgTsummer", "avgTfall", "avgTwinter", "avgTspring")
 
-sP1day_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "maxP1day") #need to get wide format
+sP1day_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "maxP1day")
 names(sP1day_w)<-c("site_no","Nyear","maxP1summer", "maxP1fall","maxP1winter","maxP1spring")
 
-#1 year lagged Precip
-laggedPrecip <- aggregate(SDAYMET$totprecip,by=list(SDAYMET$site_no, SDAYMET$Nyear),FUN=sum) #sum each FISH year precip
-names(laggedPrecip)<-c("site_no","Nyear","totAnnPrecip") #name vars
-str(laggedPrecip)
-sortlaggedPrecip<-laggedPrecip[order(laggedPrecip$site_no,laggedPrecip$Nyear),] #check for missing years! #DEAL WITH??
-#sortlaggedPrecip[1:100,]; tail(sortlaggedPrecip) #spot check
+maxcons0p_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "maxcons0p")
+names(maxcons0p_w)<-c("site_no","Nyear","con0summer","con0fall","con0winter","con0spring")
 
-#slide data forward and back 1 day to get 3 day totals around each day
-laggedPreciplagged<-slide(sortlaggedPrecip, Var= "totAnnPrecip", GroupVar= "site_no", NewVar= "L1AnnPrec", slideBy = -1)
-#head(laggedPreciplagged);tail(laggedPreciplagged)
+maxconsU1p_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "maxconsU1p")
+names(maxconsU1p_w)<-c("site_no","Nyear","conU1summer","conU1fall","conU1winter","conU1spring")
 
+max7T_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "maxavg7maxT")
+names(max7T_w)<-c("site_no","Nyear","max7Tsummer","max7Tfall","max7Twinter","max7Tspring")
 
+max7prcp_w <- dcast(SDAYMET, site_no + Nyear ~ Nseason,value.var = "max7prcp")
+names(max7prcp_w)<-c("site_no","Nyear","max7prcpsummer","max7prcpfall","max7prcpwinter","max7prcpspring")
 
 #merge all these data sets together
-aDAYMET<-merge(fSDAYMETM,fSDAYMETM2,by=c("site_no","Nyear"))
-aDAYMET<-merge(aDAYMET,fSDAYMETM3,by=c("site_no","Nyear"))
-aDAYMET<-merge(aDAYMET,w_MDAYMET,by=c("site_no","Nyear"))
-aDAYMET<-merge(aDAYMET,sP3day_w,by=c("site_no","Nyear"))
+aDAYMET<-merge(totprecip_w,avgtmax_w,by=c("site_no","Nyear"))
+aDAYMET<-merge(aDAYMET,avgtmin_w,by=c("site_no","Nyear"))
+aDAYMET<-merge(aDAYMET,avgtavg_w,by=c("site_no","Nyear"))
+aDAYMET<-merge(aDAYMET,maxcons0p_w,by=c("site_no","Nyear"))
+aDAYMET<-merge(aDAYMET,maxconsU1p_w,by=c("site_no","Nyear"))
 aDAYMET<-merge(aDAYMET,sP1day_w,by=c("site_no","Nyear"))
-aDAYMET<-merge(aDAYMET,laggedPreciplagged,by=c("site_no","Nyear"))
+aDAYMET<-merge(aDAYMET,max7T_w,by=c("site_no","Nyear"))
+aDAYMET<-merge(aDAYMET,max7prcp_w,by=c("site_no","Nyear"))
 
-aDAYMET<-aDAYMET[order(aDAYMET$site_no,aDAYMET$Nyear),] #check for missing years! #DEAL WITH??
+##and the cummulative summer one from above
+# load("output/sumCumtemps.rdata")
+# aDAYMET<-merge(aDAYMET,sumCumtemps,by=c("site_no","Nyear"))
+
+#aDAYMET<-aDAYMET[order(aDAYMET$site_no,aDAYMET$Nyear),] #check for missing years! #DEAL WITH??
 
 save(aDAYMET,file="output/aDAYMET.rdata")
 
-# #### THIS SEEMS OLD?? ANNUAL get weather on annual level to match fish data #### 
+# #### OLD # #### 
+# #1 year lagged Precip
+# laggedPrecip <- aggregate(SDAYMET$totprecip,by=list(SDAYMET$site_no, SDAYMET$Nyear),FUN=sum) #sum each FISH year precip
+# names(laggedPrecip)<-c("site_no","Nyear","totAnnPrecip") #name vars
+# str(laggedPrecip)
+# sortlaggedPrecip<-laggedPrecip[order(laggedPrecip$site_no,laggedPrecip$Nyear),] #check for missing years! #DEAL WITH??
+# #sortlaggedPrecip[1:100,]; tail(sortlaggedPrecip) #spot check
+
+# #slide data forward and back 1 day to get 3 day totals around each day
+# laggedPreciplagged<-slide(sortlaggedPrecip, Var= "totAnnPrecip", GroupVar= "site_no", NewVar= "L1AnnPrec", slideBy = -1)
+# #head(laggedPreciplagged);tail(laggedPreciplagged)
+
+
+# #### THIS SEEMS OLD?? ANNUAL get weather on annual level to match fish data #
 # SDAYMETM <- dcast(SDAYMET, site_no + Nyear ~ season,value.var = "totprecip") #need to get wide format
 # names(SDAYMETM)<-c("site_no","Nyear","Pfall", "Pspring", "Psummer", "Pwinter")
 # 
@@ -257,3 +239,62 @@ save(aDAYMET,file="output/aDAYMET.rdata")
 # 
 # head(slide8); tail(slide8)
 # SDAYMET<-slide8
+
+# #### 2- Add monthly Precip, max daily precip and max 3 day precip ##
+# MDAYMET <- ddply(DAYMET, .(site_no, Nyear, month), summarize, 
+#                  dayspermonth=sum(tally),
+#                  totprecip = sum(prcp, na.rm = T))
+# head(MDAYMET)
+# 
+# ##aggregate back to seasonal level, preserving monthly precips
+# w_MDAYMET <- dcast(MDAYMET, site_no + Nyear ~ month ,value.var = "totprecip") #need to get wide format
+# names(w_MDAYMET) #check this
+# names(w_MDAYMET)<-c("site_no","Nyear","Pjan", "Pfeb", "Pmar", "Papril", "Pmay", "Pjune", "Pjuly", "Paug", "Psept",
+#                     "Poct", "Pnov", "Pdec")
+# #reorder in fish year order
+# w_MDAYMET<-w_MDAYMET[c("site_no","Nyear","Pjune", "Pjuly", "Paug", "Psept",
+#                        "Poct", "Pnov", "Pdec","Pjan", "Pfeb", "Pmar", "Papril", "Pmay")]
+# 
+# #find 3 day total Precip
+# #sort to make sure it's in order
+# sortDAYMET<-DAYMET[order(DAYMET$site_no,as.Date(DAYMET$Date, format="%Y-%m-%d ")),] #make sure order is correct
+# #sDAYMET[1:100,]; tail(sDAYMET) #spot check
+# 
+# #slide data forward and back 1 day to get 3 day totals around each day
+# sortDAYMETS1<-slide(sortDAYMET, Var= "prcp", GroupVar= "site_no", NewVar= "prcpL1", slideBy = -1)
+# sortDAYMETS2<-slide(sortDAYMETS1, Var= "prcp", GroupVar= "site_no", NewVar= "prcpF1", slideBy = 1)
+# 
+# #sum 3 days
+# sortDAYMETS2$P3day<-rowSums(subset(sortDAYMETS2, select = c("prcp","prcpL1","prcpF1")), na.rm = TRUE)
+# 
+# #aggregate down to seasonal level, selecting max sum3day precip
+# sP3day <- aggregate(sortDAYMETS2$P3day,by=list(sortDAYMETS2$site_no, sortDAYMETS2$Nyear, sortDAYMETS2$Nseason),FUN=max)
+# names(sP3day)<-c("site_no","Nyear","Nseason","maxP3day")
+# 
+# ##max
+# sP1day <- aggregate(DAYMET$prcp,by=list(DAYMET$site_no, DAYMET$Nyear, DAYMET$Nseason),FUN=max)
+# names(sP1day)<-c("site_no","Nyear","Nseason","maxP1day")
+# 
+# ### merge these datasets together to have a seasonal data set with monthly precip sums, 3 day max precip
+# sP13day<-merge(sP3day, sP1day,by=c("site_no","Nyear","Nseason"))
+# #sum(sP13day$maxP1day> sP13day$maxP3day) #good, no 1 day maxes are higher than 3 day which wouldn't make sense
+# 
+# sPrec<-merge(sP13day,w_MDAYMET,by=c("site_no","Nyear"))
+# 
+# SDAYMET<-merge(SDAYMET,sPrec,by=c("site_no","Nyear","Nseason"))
+# 
+# #add 0.01 to Precip vars with zeros: Pmar, Psept, Poct
+# #summary(SDAYMET)
+# SDAYMET$Pmar[SDAYMET$Pmar==0]<- .01
+# SDAYMET$Psept[SDAYMET$Psept==0]<- .01
+# SDAYMET$Poct[SDAYMET$Poct==0]<- .01
+# 
+# sum(SDAYMET$avgtmax<0,na.rm=T) #11
+# sum(SDAYMET$avgtmaxL1<0,na.rm=T) #11
+# sum(SDAYMET$avgtmaxL2<0,na.rm=T) #8
+# 
+# SDAYMET$avgtmax.T<- SDAYMET$avgtmax+3
+# SDAYMET$avgtmaxL1.T<- SDAYMET$avgtmaxL1+3
+# SDAYMET$avgtmaxL2.T<- SDAYMET$avgtmaxL2+3
+# 
+# save(SDAYMET,file="output/SDAYMET.rdata")
